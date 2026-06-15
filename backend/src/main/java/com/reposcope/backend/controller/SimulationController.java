@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import com.reposcope.backend.dto.ArchitectureGraphResponse;
 
 import java.util.List;
 
@@ -30,6 +31,11 @@ public class SimulationController {
     public List<String> getSampleNodes() {
         return simulationService.getSampleNodes();
     }
+
+    @GetMapping("/api/simulations/sample/graph")
+    public ArchitectureGraphResponse getSampleArchitectureGraph() {
+       return simulationService.getSampleArchitectureGraph();
+    }   
 
     @PostMapping("/api/simulations/outage")
     public SimulationResultResponse runOutageSimulation(
