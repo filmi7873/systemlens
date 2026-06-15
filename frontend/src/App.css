@@ -1,0 +1,115 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.hero {
+  width: min(900px, 100%);
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 28px;
+  padding: 48px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+}
+
+.eyebrow {
+  margin: 0 0 16px;
+  color: #93c5fd;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(3rem, 8vw, 6rem);
+  line-height: 0.95;
+}
+
+.subtitle {
+  max-width: 720px;
+  margin: 24px 0 32px;
+  color: #cbd5e1;
+  font-size: 1.15rem;
+  line-height: 1.7;
+}
+
+.repo-form {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.repo-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #020617;
+  color: #f8fafc;
+  font-size: 1rem;
+}
+
+button {
+  border: 0;
+  border-radius: 14px;
+  padding: 14px 18px;
+  background: #2563eb;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.health-card {
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  padding-top: 28px;
+}
+
+.health-card h2 {
+  margin: 0 0 8px;
+}
+
+.health-card p {
+  color: #cbd5e1;
+}
+
+.success {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.success p {
+  margin: 4px 0;
+  color: #bbf7d0;
+}
+
+.error {
+  margin-top: 16px;
+  color: #fecaca;
+}
