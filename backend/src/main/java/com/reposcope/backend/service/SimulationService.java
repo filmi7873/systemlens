@@ -1,8 +1,8 @@
 package com.reposcope.backend.service;
 
+import com.reposcope.backend.dto.ArchitectureGraphResponse;
 import com.reposcope.backend.dto.SimulationResultResponse;
 import org.springframework.stereotype.Service;
-import com.reposcope.backend.dto.ArchitectureGraphResponse;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -39,37 +39,6 @@ public class SimulationService {
             "Email Queue",
             "Notification Worker"
     );
-    
-    public ArchitectureGraphResponse getSampleArchitectureGraph() {
-    List<ArchitectureGraphResponse.ArchitectureNode> nodes = List.of(
-            new ArchitectureGraphResponse.ArchitectureNode("web-app", "Web App", "frontend"),
-            new ArchitectureGraphResponse.ArchitectureNode("auth-service", "Auth Service", "service"),
-            new ArchitectureGraphResponse.ArchitectureNode("product-service", "Product Service", "service"),
-            new ArchitectureGraphResponse.ArchitectureNode("inventory-service", "Inventory Service", "service"),
-            new ArchitectureGraphResponse.ArchitectureNode("cart-service", "Cart Service", "service"),
-            new ArchitectureGraphResponse.ArchitectureNode("checkout-service", "Checkout Service", "service"),
-            new ArchitectureGraphResponse.ArchitectureNode("payment-provider", "Payment Provider", "external"),
-            new ArchitectureGraphResponse.ArchitectureNode("order-database", "Order Database", "database"),
-            new ArchitectureGraphResponse.ArchitectureNode("inventory-database", "Inventory Database", "database"),
-            new ArchitectureGraphResponse.ArchitectureNode("email-queue", "Email Queue", "queue"),
-            new ArchitectureGraphResponse.ArchitectureNode("notification-worker", "Notification Worker", "worker")
-    );
-
-    List<ArchitectureGraphResponse.ArchitectureEdge> edges = List.of(
-            new ArchitectureGraphResponse.ArchitectureEdge("edge-auth-web", "auth-service", "web-app", "supports"),
-            new ArchitectureGraphResponse.ArchitectureEdge("edge-product-web", "product-service", "web-app", "supports"),
-            new ArchitectureGraphResponse.ArchitectureEdge("edge-inventory-web", "inventory-service", "web-app", "supports"),
-            new ArchitectureGraphResponse.ArchitectureEdge("edge-cart-checkout", "cart-service", "checkout-service", "supports"),
-            new ArchitectureGraphResponse.ArchitectureEdge("edge-inventory-checkout", "inventory-service", "checkout-service", "supports"),
-            new ArchitectureGraphResponse.ArchitectureEdge("edge-checkout-web", "checkout-service", "web-app", "supports"),
-            new ArchitectureGraphResponse.ArchitectureEdge("edge-payment-checkout", "payment-provider", "checkout-service", "supports"),
-            new ArchitectureGraphResponse.ArchitectureEdge("edge-order-checkout", "order-database", "checkout-service", "supports"),
-            new ArchitectureGraphResponse.ArchitectureEdge("edge-inventory-db-service", "inventory-database", "inventory-service", "supports"),
-            new ArchitectureGraphResponse.ArchitectureEdge("edge-email-worker", "email-queue", "notification-worker", "supports")
-    );
-
-    return new ArchitectureGraphResponse(nodes, edges);
-}
 
     public SimulationResultResponse runSamplePaymentOutage() {
         return runOutageSimulation("Payment Provider");
@@ -106,6 +75,8 @@ public class SimulationService {
                 .filter(node -> !affected.contains(node))
                 .toList();
 
+        List<List<String>> impactPaths = buildImpactPaths(failedNode);
+
         String severity = calculateSeverity(directlyAffected, indirectlyAffected);
 
         String explanation = buildExplanation(
@@ -121,12 +92,44 @@ public class SimulationService {
                 directlyAffected,
                 indirectlyAffected,
                 unaffected,
+                impactPaths,
                 explanation
         );
     }
 
     public List<String> getSampleNodes() {
         return allNodes;
+    }
+
+    public ArchitectureGraphResponse getSampleArchitectureGraph() {
+        List<ArchitectureGraphResponse.ArchitectureNode> nodes = List.of(
+                new ArchitectureGraphResponse.ArchitectureNode("web-app", "Web App", "frontend"),
+                new ArchitectureGraphResponse.ArchitectureNode("auth-service", "Auth Service", "service"),
+                new ArchitectureGraphResponse.ArchitectureNode("product-service", "Product Service", "service"),
+                new ArchitectureGraphResponse.ArchitectureNode("inventory-service", "Inventory Service", "service"),
+                new ArchitectureGraphResponse.ArchitectureNode("cart-service", "Cart Service", "service"),
+                new ArchitectureGraphResponse.ArchitectureNode("checkout-service", "Checkout Service", "service"),
+                new ArchitectureGraphResponse.ArchitectureNode("payment-provider", "Payment Provider", "external"),
+                new ArchitectureGraphResponse.ArchitectureNode("order-database", "Order Database", "database"),
+                new ArchitectureGraphResponse.ArchitectureNode("inventory-database", "Inventory Database", "database"),
+                new ArchitectureGraphResponse.ArchitectureNode("email-queue", "Email Queue", "queue"),
+                new ArchitectureGraphResponse.ArchitectureNode("notification-worker", "Notification Worker", "worker")
+        );
+
+        List<ArchitectureGraphResponse.ArchitectureEdge> edges = List.of(
+                new ArchitectureGraphResponse.ArchitectureEdge("edge-auth-web", "auth-service", "web-app", "supports"),
+                new ArchitectureGraphResponse.ArchitectureEdge("edge-product-web", "product-service", "web-app", "supports"),
+                new ArchitectureGraphResponse.ArchitectureEdge("edge-inventory-web", "inventory-service", "web-app", "supports"),
+                new ArchitectureGraphResponse.ArchitectureEdge("edge-cart-checkout", "cart-service", "checkout-service", "supports"),
+                new ArchitectureGraphResponse.ArchitectureEdge("edge-inventory-checkout", "inventory-service", "checkout-service", "supports"),
+                new ArchitectureGraphResponse.ArchitectureEdge("edge-checkout-web", "checkout-service", "web-app", "supports"),
+                new ArchitectureGraphResponse.ArchitectureEdge("edge-payment-checkout", "payment-provider", "checkout-service", "supports"),
+                new ArchitectureGraphResponse.ArchitectureEdge("edge-order-checkout", "order-database", "checkout-service", "supports"),
+                new ArchitectureGraphResponse.ArchitectureEdge("edge-inventory-db-service", "inventory-database", "inventory-service", "supports"),
+                new ArchitectureGraphResponse.ArchitectureEdge("edge-email-worker", "email-queue", "notification-worker", "supports")
+        );
+
+        return new ArchitectureGraphResponse(nodes, edges);
     }
 
     private void collectDownstreamImpact(String node, Set<String> impactedNodes) {
@@ -136,6 +139,32 @@ public class SimulationService {
             if (impactedNodes.add(dependent)) {
                 collectDownstreamImpact(dependent, impactedNodes);
             }
+        }
+    }
+
+    private List<List<String>> buildImpactPaths(String failedNode) {
+        List<List<String>> paths = new ArrayList<>();
+        List<String> currentPath = new ArrayList<>();
+        currentPath.add(failedNode);
+
+        collectImpactPaths(failedNode, currentPath, paths);
+
+        return paths;
+    }
+
+    private void collectImpactPaths(
+            String currentNode,
+            List<String> currentPath,
+            List<List<String>> paths
+    ) {
+        List<String> nextDependents = dependents.getOrDefault(currentNode, List.of());
+
+        for (String dependent : nextDependents) {
+            List<String> newPath = new ArrayList<>(currentPath);
+            newPath.add(dependent);
+            paths.add(newPath);
+
+            collectImpactPaths(dependent, newPath, paths);
         }
     }
 

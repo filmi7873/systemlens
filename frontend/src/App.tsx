@@ -1,4 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Background,
+  Controls,
+  MarkerType,
+  ReactFlow,
+  type Edge,
+  type Node,
+} from "@xyflow/react";
 import "./App.css";
 
 type HealthResponse = {
@@ -12,41 +20,144 @@ type SimulationResult = {
   directlyAffected: string[];
   indirectlyAffected: string[];
   unaffected: string[];
+  impactPaths: string[][];
   explanation: string;
 };
+
+type ArchitectureGraphResponse = {
+  nodes: ArchitectureNodeResponse[];
+  edges: ArchitectureEdgeResponse[];
+};
+
+type ArchitectureNodeResponse = {
+  id: string;
+  label: string;
+  type: string;
+};
+
+type ArchitectureEdgeResponse = {
+  id: string;
+  source: string;
+  target: string;
+  relationship: string;
+};
+
+const nodePositions: Record<string, { x: number; y: number }> = {
+  "payment-provider": { x: 0, y: 220 },
+  "order-database": { x: 0, y: 340 },
+  "inventory-database": { x: 0, y: 460 },
+  "email-queue": { x: 0, y: 580 },
+
+  "cart-service": { x: 300, y: 120 },
+  "checkout-service": { x: 300, y: 280 },
+  "inventory-service": { x: 300, y: 440 },
+  "notification-worker": { x: 300, y: 580 },
+
+  "auth-service": { x: 600, y: 80 },
+  "product-service": { x: 600, y: 220 },
+  "web-app": { x: 900, y: 280 },
+};
+
+function normalizeNodeName(name: string) {
+  return name.toLowerCase().replaceAll(" ", "-");
+}
+
+function getNodeImpactClass(
+  label: string,
+  simulation: SimulationResult | null
+) {
+  if (!simulation) {
+    return "node-neutral";
+  }
+
+  if (label === simulation.failedNode) {
+    return "node-failed";
+  }
+
+  if (simulation.directlyAffected.includes(label)) {
+    return "node-direct";
+  }
+
+  if (simulation.indirectlyAffected.includes(label)) {
+    return "node-indirect";
+  }
+
+  return "node-unaffected";
+}
 
 function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [nodes, setNodes] = useState<string[]>([]);
   const [selectedNode, setSelectedNode] = useState("Payment Provider");
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
+  const [graph, setGraph] = useState<ArchitectureGraphResponse | null>(null);
   const [error, setError] = useState<string>("");
   const [isSimulating, setIsSimulating] = useState(false);
 
   useEffect(() => {
-    async function fetchNodes() {
+    async function fetchInitialData() {
       try {
-        const response = await fetch(
-          "http://localhost:8080/api/simulations/sample/nodes"
-        );
+        const [nodesResponse, graphResponse] = await Promise.all([
+          fetch("http://localhost:8080/api/simulations/sample/nodes"),
+          fetch("http://localhost:8080/api/simulations/sample/graph"),
+        ]);
 
-        if (!response.ok) {
-          throw new Error("Could not fetch nodes.");
+        if (!nodesResponse.ok || !graphResponse.ok) {
+          throw new Error("Could not fetch sample architecture.");
         }
 
-        const data: string[] = await response.json();
-        setNodes(data);
+        const nodesData: string[] = await nodesResponse.json();
+        const graphData: ArchitectureGraphResponse = await graphResponse.json();
 
-        if (data.length > 0) {
-          setSelectedNode(data[0]);
+        setNodes(nodesData);
+        setGraph(graphData);
+
+        if (nodesData.length > 0) {
+          setSelectedNode(nodesData[0]);
         }
       } catch (err) {
-        setError("Could not load sample architecture nodes.");
+        setError("Could not load sample architecture.");
       }
     }
 
-    fetchNodes();
+    fetchInitialData();
   }, []);
+
+  const flowNodes: Node[] = useMemo(() => {
+    if (!graph) {
+      return [];
+    }
+
+    return graph.nodes.map((node) => ({
+      id: node.id,
+      position: nodePositions[node.id] ?? { x: 0, y: 0 },
+      data: {
+        label: (
+          <div>
+            <strong>{node.label}</strong>
+            <span>{node.type}</span>
+          </div>
+        ),
+      },
+      className: getNodeImpactClass(node.label, simulation),
+    }));
+  }, [graph, simulation]);
+
+  const flowEdges: Edge[] = useMemo(() => {
+    if (!graph) {
+      return [];
+    }
+
+    return graph.edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      label: edge.relationship,
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+      },
+    }));
+  }, [graph]);
 
   async function checkBackendHealth() {
     try {
@@ -116,23 +227,48 @@ function App() {
           </p>
 
           <div className="simulation-controls">
-            <label htmlFor="failed-node">Failed node</label>
+            <div>
+              <label htmlFor="failed-node">Failed node</label>
 
-            <select
-              id="failed-node"
-              value={selectedNode}
-              onChange={(event) => setSelectedNode(event.target.value)}
-            >
-              {nodes.map((node) => (
-                <option key={node} value={node}>
-                  {node}
-                </option>
-              ))}
-            </select>
+              <select
+                id="failed-node"
+                value={selectedNode}
+                onChange={(event) => setSelectedNode(event.target.value)}
+              >
+                {nodes.map((node) => (
+                  <option key={node} value={node}>
+                    {node}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <button onClick={runOutageSimulation} disabled={isSimulating}>
               {isSimulating ? "Running Simulation..." : "Run Outage Simulation"}
             </button>
+          </div>
+        </div>
+
+        <div className="graph-card">
+          <div className="graph-header">
+            <div>
+              <p className="eyebrow">System Graph</p>
+              <h2>Sample E-commerce Architecture</h2>
+            </div>
+
+            <div className="legend">
+              <span><i className="legend-dot failed" />Failed</span>
+              <span><i className="legend-dot direct-dot" />Direct</span>
+              <span><i className="legend-dot indirect-dot" />Indirect</span>
+              <span><i className="legend-dot unaffected-dot" />Unaffected</span>
+            </div>
+          </div>
+
+          <div className="flow-wrapper">
+            <ReactFlow nodes={flowNodes} edges={flowEdges} fitView>
+              <Background />
+              <Controls />
+            </ReactFlow>
           </div>
         </div>
 
@@ -150,7 +286,31 @@ function App() {
             </div>
 
             <p className="explanation">{simulation.explanation}</p>
+          <div className="impact-paths">
+  <h3>Impact Paths</h3>
 
+  {simulation.impactPaths.length > 0 ? (
+    <div className="path-list">
+      {simulation.impactPaths.map((path, index) => (
+        <div className="impact-path" key={`${path.join("-")}-${index}`}>
+          {path.map((node, nodeIndex) => (
+            <span key={`${node}-${nodeIndex}`}>
+              <span className={nodeIndex === 0 ? "path-node failed-path-node" : "path-node"}>
+                {node}
+              </span>
+
+              {nodeIndex < path.length - 1 && (
+                <span className="path-arrow">→</span>
+              )}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p>No downstream impact paths found.</p>
+  )}
+</div>
             <div className="impact-grid">
               <div className="impact-column direct">
                 <h3>Directly Affected</h3>

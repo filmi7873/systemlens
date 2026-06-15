@@ -8,6 +8,7 @@ public class SimulationResultResponse {
     private List<String> directlyAffected;
     private List<String> indirectlyAffected;
     private List<String> unaffected;
+    private List<List<String>> impactPaths;
     private String explanation;
 
     public SimulationResultResponse(
@@ -16,6 +17,7 @@ public class SimulationResultResponse {
             List<String> directlyAffected,
             List<String> indirectlyAffected,
             List<String> unaffected,
+            List<List<String>> impactPaths,
             String explanation
     ) {
         this.failedNode = failedNode;
@@ -23,6 +25,7 @@ public class SimulationResultResponse {
         this.directlyAffected = directlyAffected;
         this.indirectlyAffected = indirectlyAffected;
         this.unaffected = unaffected;
+        this.impactPaths = impactPaths;
         this.explanation = explanation;
     }
 
@@ -44,6 +47,10 @@ public class SimulationResultResponse {
 
     public List<String> getUnaffected() {
         return unaffected;
+    }
+
+    public List<List<String>> getImpactPaths() {
+        return impactPaths;
     }
 
     public String getExplanation() {
