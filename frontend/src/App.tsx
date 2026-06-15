@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 
 type HealthResponse = {
@@ -17,9 +17,36 @@ type SimulationResult = {
 
 function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [nodes, setNodes] = useState<string[]>([]);
+  const [selectedNode, setSelectedNode] = useState("Payment Provider");
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [error, setError] = useState<string>("");
   const [isSimulating, setIsSimulating] = useState(false);
+
+  useEffect(() => {
+    async function fetchNodes() {
+      try {
+        const response = await fetch(
+          "http://localhost:8080/api/simulations/sample/nodes"
+        );
+
+        if (!response.ok) {
+          throw new Error("Could not fetch nodes.");
+        }
+
+        const data: string[] = await response.json();
+        setNodes(data);
+
+        if (data.length > 0) {
+          setSelectedNode(data[0]);
+        }
+      } catch (err) {
+        setError("Could not load sample architecture nodes.");
+      }
+    }
+
+    fetchNodes();
+  }, []);
 
   async function checkBackendHealth() {
     try {
@@ -39,15 +66,19 @@ function App() {
     }
   }
 
-  async function runSampleSimulation() {
+  async function runOutageSimulation() {
     try {
       setError("");
       setSimulation(null);
       setIsSimulating(true);
 
-      const response = await fetch(
-        "http://localhost:8080/api/simulations/outage/sample"
-      );
+      const response = await fetch("http://localhost:8080/api/simulations/outage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ failedNode: selectedNode }),
+      });
 
       if (!response.ok) {
         throw new Error("Simulation failed.");
@@ -77,16 +108,32 @@ function App() {
         </p>
 
         <div className="action-panel">
-          <h2>Sample Outage Simulation</h2>
+          <h2>Outage Simulation</h2>
 
           <p>
-            Run a sample simulation where the Payment Provider fails in an
-            e-commerce architecture.
+            Choose a system node and simulate what happens when it becomes
+            unavailable.
           </p>
 
-          <button onClick={runSampleSimulation} disabled={isSimulating}>
-            {isSimulating ? "Running Simulation..." : "Run Payment Provider Outage"}
-          </button>
+          <div className="simulation-controls">
+            <label htmlFor="failed-node">Failed node</label>
+
+            <select
+              id="failed-node"
+              value={selectedNode}
+              onChange={(event) => setSelectedNode(event.target.value)}
+            >
+              {nodes.map((node) => (
+                <option key={node} value={node}>
+                  {node}
+                </option>
+              ))}
+            </select>
+
+            <button onClick={runOutageSimulation} disabled={isSimulating}>
+              {isSimulating ? "Running Simulation..." : "Run Outage Simulation"}
+            </button>
+          </div>
         </div>
 
         {simulation && (
@@ -107,20 +154,28 @@ function App() {
             <div className="impact-grid">
               <div className="impact-column direct">
                 <h3>Directly Affected</h3>
-                <ul>
-                  {simulation.directlyAffected.map((node) => (
-                    <li key={node}>{node}</li>
-                  ))}
-                </ul>
+                {simulation.directlyAffected.length > 0 ? (
+                  <ul>
+                    {simulation.directlyAffected.map((node) => (
+                      <li key={node}>{node}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No direct downstream impact.</p>
+                )}
               </div>
 
               <div className="impact-column indirect">
                 <h3>Indirectly Affected</h3>
-                <ul>
-                  {simulation.indirectlyAffected.map((node) => (
-                    <li key={node}>{node}</li>
-                  ))}
-                </ul>
+                {simulation.indirectlyAffected.length > 0 ? (
+                  <ul>
+                    {simulation.indirectlyAffected.map((node) => (
+                      <li key={node}>{node}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No indirect downstream impact.</p>
+                )}
               </div>
 
               <div className="impact-column unaffected">
