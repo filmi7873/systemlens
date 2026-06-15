@@ -6,19 +6,18 @@ type HealthResponse = {
   service: string;
 };
 
-type AnalyzeRepositoryResponse = {
-  owner: string;
-  repo: string;
-  url: string;
-  status: string;
+type SimulationResult = {
+  failedNode: string;
+  severity: string;
+  directlyAffected: string[];
+  indirectlyAffected: string[];
+  unaffected: string[];
+  explanation: string;
 };
 
 function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [repoUrl, setRepoUrl] = useState("");
-  const [analysis, setAnalysis] = useState<AnalyzeRepositoryResponse | null>(
-    null
-  );
+  const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [error, setError] = useState<string>("");
 
   async function checkBackendHealth() {
@@ -39,64 +38,92 @@ function App() {
     }
   }
 
-  async function analyzeRepository(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function runSampleSimulation() {
     try {
       setError("");
-      setAnalysis(null);
+      setSimulation(null);
 
       const response = await fetch(
-        "http://localhost:8080/api/repositories/analyze",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ url: repoUrl }),
-        }
+        "http://localhost:8080/api/simulations/outage/sample"
       );
 
       if (!response.ok) {
-        throw new Error("Repository analysis failed.");
+        throw new Error("Simulation failed.");
       }
 
-      const data: AnalyzeRepositoryResponse = await response.json();
-      setAnalysis(data);
+      const data: SimulationResult = await response.json();
+      setSimulation(data);
     } catch (err) {
-      setError("Could not analyze repository. Check the URL and try again.");
-      setAnalysis(null);
+      setError("Could not run the outage simulation.");
+      setSimulation(null);
     }
   }
 
   return (
     <main className="app">
       <section className="hero">
-        <p className="eyebrow">Codebase Intelligence Platform</p>
+        <p className="eyebrow">Architecture Simulation Platform</p>
 
-        <h1>RepoScope</h1>
+        <h1>SystemLens</h1>
 
         <p className="subtitle">
-          Analyze public GitHub repositories and generate architecture maps,
-          dependency graphs, and onboarding guides for developers entering
-          unfamiliar codebases.
+          Model software systems as dependency graphs and simulate outages,
+          schema changes, and traffic spikes to understand downstream impact
+          before production.
         </p>
 
-        <form className="repo-form" onSubmit={analyzeRepository}>
-          <input
-            type="text"
-            placeholder="Paste a GitHub repo URL..."
-            value={repoUrl}
-            onChange={(event) => setRepoUrl(event.target.value)}
-          />
-          <button type="submit">Analyze Repo</button>
-        </form>
+        <div className="action-panel">
+          <h2>Sample Outage Simulation</h2>
+          <p>
+            Run a sample simulation where the Payment Provider fails in an
+            e-commerce system.
+          </p>
 
-        {analysis && (
-          <div className="success">
-            <p>Owner: {analysis.owner}</p>
-            <p>Repository: {analysis.repo}</p>
-            <p>Status: {analysis.status}</p>
+          <button onClick={runSampleSimulation}>
+            Run Payment Provider Outage
+          </button>
+        </div>
+
+        {simulation && (
+          <div className="result-card">
+            <h2>Simulation Result</h2>
+
+            <p>
+              <strong>Failed Node:</strong> {simulation.failedNode}
+            </p>
+
+            <p>
+              <strong>Severity:</strong> {simulation.severity}
+            </p>
+
+            <div>
+              <strong>Directly Affected:</strong>
+              <ul>
+                {simulation.directlyAffected.map((node) => (
+                  <li key={node}>{node}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <strong>Indirectly Affected:</strong>
+              <ul>
+                {simulation.indirectlyAffected.map((node) => (
+                  <li key={node}>{node}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <strong>Unaffected:</strong>
+              <ul>
+                {simulation.unaffected.map((node) => (
+                  <li key={node}>{node}</li>
+                ))}
+              </ul>
+            </div>
+
+            <p>{simulation.explanation}</p>
           </div>
         )}
 
