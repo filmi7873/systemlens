@@ -6,8 +6,19 @@ type HealthResponse = {
   service: string;
 };
 
+type AnalyzeRepositoryResponse = {
+  owner: string;
+  repo: string;
+  url: string;
+  status: string;
+};
+
 function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [repoUrl, setRepoUrl] = useState("");
+  const [analysis, setAnalysis] = useState<AnalyzeRepositoryResponse | null>(
+    null
+  );
   const [error, setError] = useState<string>("");
 
   async function checkBackendHealth() {
@@ -28,6 +39,36 @@ function App() {
     }
   }
 
+  async function analyzeRepository(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    try {
+      setError("");
+      setAnalysis(null);
+
+      const response = await fetch(
+        "http://localhost:8080/api/repositories/analyze",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url: repoUrl }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Repository analysis failed.");
+      }
+
+      const data: AnalyzeRepositoryResponse = await response.json();
+      setAnalysis(data);
+    } catch (err) {
+      setError("Could not analyze repository. Check the URL and try again.");
+      setAnalysis(null);
+    }
+  }
+
   return (
     <main className="app">
       <section className="hero">
@@ -41,14 +82,23 @@ function App() {
           unfamiliar codebases.
         </p>
 
-        <div className="repo-form">
+        <form className="repo-form" onSubmit={analyzeRepository}>
           <input
             type="text"
             placeholder="Paste a GitHub repo URL..."
-            disabled
+            value={repoUrl}
+            onChange={(event) => setRepoUrl(event.target.value)}
           />
-          <button disabled>Analyze Repo</button>
-        </div>
+          <button type="submit">Analyze Repo</button>
+        </form>
+
+        {analysis && (
+          <div className="success">
+            <p>Owner: {analysis.owner}</p>
+            <p>Repository: {analysis.repo}</p>
+            <p>Status: {analysis.status}</p>
+          </div>
+        )}
 
         <div className="health-card">
           <h2>Backend Connection</h2>

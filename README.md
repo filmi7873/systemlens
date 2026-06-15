@@ -1,29 +1,30 @@
-# RepoScope
+# SystemLens
 
-RepoScope is a full-stack codebase intelligence platform that analyzes public GitHub repositories and generates architecture maps, dependency graphs, and onboarding guides for developers entering unfamiliar codebases.
+SystemLens is a full-stack architecture simulation platform that lets developers model software systems and simulate outages, schema changes, and traffic spikes to understand downstream impact before production.
 
 ## Problem
 
-Developers often spend hours or days trying to understand how an unfamiliar repository is structured. RepoScope helps reduce that onboarding time by turning repository metadata, file structure, and dependency relationships into a readable dashboard.
+Modern software systems depend on many moving parts: frontend clients, APIs, databases, queues, workers, caches, and external services. When one part fails or changes, it can be difficult to quickly understand what else is affected.
+
+SystemLens helps developers reason about system behavior by modeling architecture as a dependency graph and running simulations against that graph.
 
 ## MVP
 
-The MVP allows users to submit a public GitHub repository URL and receive:
+The MVP allows users to:
 
-- repository overview
-- framework/language detection
-- categorized file structure
-- dependency graph
-- onboarding guide
-- complexity/risk report
+- view a sample software architecture graph
+- simulate a service outage
+- see directly and indirectly affected systems
+- view severity and impact explanations
+- eventually create custom architecture maps
 
 ## Tech Stack
 
 - Frontend: React, TypeScript
 - Backend: Spring Boot, Java
-- Database: PostgreSQL
-- Visualization: React Flow
-- External API: GitHub API
+- Database: PostgreSQL later
+- Visualization: React Flow later
+- Simulation Model: Graph traversal and impact scoring
 
 ## Status
 
@@ -31,34 +32,41 @@ In development.
 
 ## Roadmap
 
-### Sprint 0: Project Setup
+### Sprint 0: Project Pivot
 
-- Initialize monorepo
-- Write PRD
-- Create backlog
-- Set up frontend and backend skeletons
+- Rename product from RepoScope to SystemLens
+- Update documentation
+- Keep existing React/Spring Boot foundation
+- Define MVP simulation model
 
-### Sprint 1: GitHub Ingestion
+### Sprint 1: Sample Simulation API
 
-- Parse GitHub repository URLs
-- Fetch repository metadata
-- Fetch repository file tree
-- Store analysis results
+- Create backend model for system nodes and dependencies
+- Create outage simulation endpoint
+- Return affected nodes and impact severity
+- Display simulation results in React
 
-### Sprint 2: Architecture Detection
+### Sprint 2: Interactive Architecture UI
 
-- Detect React project structure
-- Categorize files
-- Generate architecture summary
+- Display system nodes and relationships
+- Add sample architecture templates
+- Allow users to select a failure point
 
-### Sprint 3: Dependency Graph
+### Sprint 3: Graph Visualization
 
-- Parse imports
-- Resolve file relationships
-- Render interactive graph
+- Integrate React Flow
+- Visualize affected systems
+- Highlight direct and indirect impact
 
-### Sprint 4: Onboarding Report
+### Sprint 4: Custom Systems
 
-- Generate onboarding guide
-- Add complexity report
-- Polish dashboard and case study
+- Let users create nodes
+- Let users connect dependencies
+- Persist systems in database
+
+### Sprint 5: Advanced Simulations
+
+- Schema change impact
+- Traffic spike impact
+- Risk scoring
+- mitigation recommendations
