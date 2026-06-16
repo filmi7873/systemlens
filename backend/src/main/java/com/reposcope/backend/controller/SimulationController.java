@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import com.reposcope.backend.dto.CustomOutageSimulationRequest;
 import com.reposcope.backend.dto.CustomSchemaChangeSimulationRequest;
+import com.reposcope.backend.dto.SimulationAnalysisResponse;
 
 import java.util.List;
 
@@ -59,6 +60,20 @@ public class SimulationController {
     @GetMapping("/api/simulations/sample/graph")
     public ArchitectureGraphResponse getSampleArchitectureGraph() {
         return simulationService.getSampleArchitectureGraph();
+    }
+   
+    @PostMapping("/api/simulations/outage/analyze")
+    public SimulationAnalysisResponse runOutageAnalysis(
+        @RequestBody OutageSimulationRequest request
+    ) {
+        return simulationService.runOutageAnalysis(request.getFailedNode());
+    }
+
+    @PostMapping("/api/simulations/schema-change/analyze")
+    public SimulationAnalysisResponse runSchemaChangeAnalysis(
+        @RequestBody SchemaChangeSimulationRequest request
+    ) {
+        return simulationService.runSchemaChangeAnalysis(request.getChangedNode());
     }
  
     @PostMapping("/api/simulations/schema-change/custom")
