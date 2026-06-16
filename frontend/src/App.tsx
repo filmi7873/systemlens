@@ -26,6 +26,18 @@ type SimulationResult = {
   explanation: string;
 };
 
+type RiskAssessment = {
+  riskScore: number;
+  riskLevel: string;
+  riskFactors: string[];
+  recommendations: string[];
+};
+
+type SimulationAnalysis = {
+  simulation: SimulationResult;
+  riskAssessment: RiskAssessment;
+};
+
 type ArchitectureGraphResponse = {
   nodes: ArchitectureNodeResponse[];
   edges: ArchitectureEdgeResponse[];
@@ -90,6 +102,8 @@ function App() {
   const [simulationMode, setSimulationMode] =
     useState<SimulationMode>("outage");
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
+  const [riskAssessment, setRiskAssessment] =
+    useState<RiskAssessment | null>(null);
   const [graph, setGraph] = useState<ArchitectureGraphResponse | null>(null);
   const [error, setError] = useState<string>("");
   const [isSimulating, setIsSimulating] = useState(false);
@@ -181,12 +195,13 @@ function App() {
     try {
       setError("");
       setSimulation(null);
+      setRiskAssessment(null);
       setIsSimulating(true);
 
       const endpoint =
         simulationMode === "outage"
-          ? "http://localhost:8080/api/simulations/outage"
-          : "http://localhost:8080/api/simulations/schema-change";
+          ? "http://localhost:8080/api/simulations/outage/analyze"
+          : "http://localhost:8080/api/simulations/schema-change/analyze";
 
       const requestBody =
         simulationMode === "outage"
@@ -202,21 +217,26 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error("Simulation failed.");
+        throw new Error("Simulation analysis failed.");
       }
 
-      const data: SimulationResult = await response.json();
-      setSimulation(data);
+      const data: SimulationAnalysis = await response.json();
+
+      setSimulation(data.simulation);
+      setRiskAssessment(data.riskAssessment);
     } catch (err) {
-      setError("Could not run the simulation.");
+      setError("Could not run the simulation analysis.");
       setSimulation(null);
+      setRiskAssessment(null);
     } finally {
       setIsSimulating(false);
     }
   }
 
   const simulationTitle =
-    simulationMode === "outage" ? "Outage Simulation" : "Schema Change Simulation";
+    simulationMode === "outage"
+      ? "Outage Simulation"
+      : "Schema Change Simulation";
 
   const selectedNodeLabel =
     simulationMode === "outage" ? "Failed node" : "Changed node";
@@ -252,6 +272,7 @@ function App() {
               onClick={() => {
                 setSimulationMode("outage");
                 setSimulation(null);
+                setRiskAssessment(null);
               }}
             >
               Service Outage
@@ -266,6 +287,7 @@ function App() {
               onClick={() => {
                 setSimulationMode("schema-change");
                 setSimulation(null);
+                setRiskAssessment(null);
               }}
             >
               Schema Change
@@ -279,7 +301,11 @@ function App() {
               <select
                 id="selected-node"
                 value={selectedNode}
-                onChange={(event) => setSelectedNode(event.target.value)}
+                onChange={(event) => {
+                  setSelectedNode(event.target.value);
+                  setSimulation(null);
+                  setRiskAssessment(null);
+                }}
               >
                 {nodes.map((node) => (
                   <option key={node} value={node}>
@@ -290,7 +316,7 @@ function App() {
             </div>
 
             <button onClick={runSimulation} disabled={isSimulating}>
-              {isSimulating ? "Running Simulation..." : `Run ${simulationTitle}`}
+              {isSimulating ? "Running Analysis..." : `Run ${simulationTitle}`}
             </button>
           </div>
         </div>
@@ -424,6 +450,46 @@ function App() {
                 </ul>
               </div>
             </div>
+
+            {riskAssessment && (
+              <div className="risk-card">
+                <div className="risk-header">
+                  <div>
+                    <p className="eyebrow">Risk Assessment</p>
+                    <h2>Deployment Readiness Report</h2>
+                  </div>
+
+                  <div
+                    className={`risk-score risk-${riskAssessment.riskLevel}`}
+                  >
+                    <span>{riskAssessment.riskScore}</span>
+                    <small>{riskAssessment.riskLevel}</small>
+                  </div>
+                </div>
+
+                <div className="risk-grid">
+                  <div>
+                    <h3>Why this is risky</h3>
+                    <ul>
+                      {riskAssessment.riskFactors.map((factor) => (
+                        <li key={factor}>{factor}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3>Recommended validation</h3>
+                    <ul>
+                      {riskAssessment.recommendations.map(
+                        (recommendation) => (
+                          <li key={recommendation}>{recommendation}</li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
