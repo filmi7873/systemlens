@@ -6,10 +6,7 @@ public class ArchitectureGraphResponse {
     private List<ArchitectureNode> nodes;
     private List<ArchitectureEdge> edges;
 
-    public ArchitectureGraphResponse(
-            List<ArchitectureNode> nodes,
-            List<ArchitectureEdge> edges
-    ) {
+    public ArchitectureGraphResponse(List<ArchitectureNode> nodes, List<ArchitectureEdge> edges) {
         this.nodes = nodes;
         this.edges = edges;
     }
@@ -52,12 +49,7 @@ public class ArchitectureGraphResponse {
         private String target;
         private String relationship;
 
-        public ArchitectureEdge(
-                String id,
-                String source,
-                String target,
-                String relationship
-        ) {
+        public ArchitectureEdge(String id, String source, String target, String relationship) {
             this.id = id;
             this.source = source;
             this.target = target;
