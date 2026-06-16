@@ -10,6 +10,7 @@ import com.reposcope.backend.model.SystemEdge;
 import com.reposcope.backend.model.SystemNode;
 import com.reposcope.backend.sample.SampleArchitectureFactory;
 import org.springframework.stereotype.Service;
+import com.reposcope.backend.dto.CustomSchemaChangeSimulationRequest;
 
 import java.util.List;
 
