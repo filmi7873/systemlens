@@ -5,6 +5,8 @@ import com.reposcope.backend.model.ArchitectureGraph;
 import com.reposcope.backend.sample.SampleArchitectureFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import com.reposcope.backend.model.SystemEdge;
+import com.reposcope.backend.model.SystemNode;
 
 import java.util.List;
 
@@ -104,4 +106,39 @@ class OutageSimulationEngineTest {
 
         assertEquals("Failed node is required.", exception.getMessage());
     }
+
+    @Test
+    void simulate_withCustomGraph_calculatesImpactUsingProvidedNodesAndEdges() {
+        ArchitectureGraph customGraph = new ArchitectureGraph(
+            List.of(
+                    new SystemNode("web-app", "Web App", "frontend"),
+                    new SystemNode("payments-api", "Payments API", "service"),
+                    new SystemNode("checkout-service", "Checkout Service", "service")
+            ),
+            List.of(
+                    new SystemEdge("edge-1", "Payments API", "Checkout Service", "supports"),
+                    new SystemEdge("edge-2", "Checkout Service", "Web App", "supports")
+            )
+         );
+
+        SimulationResultResponse result = outageSimulationEngine.simulate(
+            customGraph,
+            "Payments API"
+    );
+
+        assertEquals("Payments API", result.getFailedNode());
+        assertEquals("medium", result.getSeverity());
+
+        assertEquals(List.of("Checkout Service"), result.getDirectlyAffected());
+        assertEquals(List.of("Web App"), result.getIndirectlyAffected());
+        assertTrue(result.getUnaffected().isEmpty());
+
+        assertTrue(result.getImpactPaths().contains(
+            List.of("Payments API", "Checkout Service")
+        ));
+
+        assertTrue(result.getImpactPaths().contains(
+            List.of("Payments API", "Checkout Service", "Web App")
+        ));
+   }
 }
