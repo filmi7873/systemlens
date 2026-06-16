@@ -1,8 +1,10 @@
 package com.reposcope.backend.service;
 
+import com.reposcope.backend.dto.CustomOutageSimulationRequest;
 import com.reposcope.backend.dto.ArchitectureGraphResponse;
 import com.reposcope.backend.dto.SimulationResultResponse;
 import com.reposcope.backend.engine.OutageSimulationEngine;
+import com.reposcope.backend.engine.SchemaChangeSimulationEngine;
 import com.reposcope.backend.model.ArchitectureGraph;
 import com.reposcope.backend.model.SystemEdge;
 import com.reposcope.backend.model.SystemNode;
@@ -16,13 +18,16 @@ public class SimulationService {
 
     private final SampleArchitectureFactory sampleArchitectureFactory;
     private final OutageSimulationEngine outageSimulationEngine;
+    private final SchemaChangeSimulationEngine schemaChangeSimulationEngine;
 
     public SimulationService(
             SampleArchitectureFactory sampleArchitectureFactory,
-            OutageSimulationEngine outageSimulationEngine
+            OutageSimulationEngine outageSimulationEngine,
+            SchemaChangeSimulationEngine schemaChangeSimulationEngine
     ) {
         this.sampleArchitectureFactory = sampleArchitectureFactory;
         this.outageSimulationEngine = outageSimulationEngine;
+        this.schemaChangeSimulationEngine = schemaChangeSimulationEngine;
     }
 
     public SimulationResultResponse runSamplePaymentOutage() {
@@ -32,6 +37,11 @@ public class SimulationService {
     public SimulationResultResponse runOutageSimulation(String failedNode) {
         ArchitectureGraph graph = sampleArchitectureFactory.createEcommerceArchitecture();
         return outageSimulationEngine.simulate(graph, failedNode);
+    }
+
+    public SimulationResultResponse runSchemaChangeSimulation(String changedNode) {
+        ArchitectureGraph graph = sampleArchitectureFactory.createEcommerceArchitecture();
+        return schemaChangeSimulationEngine.simulate(graph, changedNode);
     }
 
     public List<String> getSampleNodes() {
@@ -54,6 +64,33 @@ public class SimulationService {
 
         return new ArchitectureGraphResponse(nodes, edges);
     }
+
+    public SimulationResultResponse runCustomOutageSimulation(
+        CustomOutageSimulationRequest request
+    ) {
+         List<SystemNode> nodes = request.getNodes()
+            .stream()
+            .map(node -> new SystemNode(
+                    node.getId(),
+                    node.getLabel(),
+                    node.getType()
+            ))
+            .toList();
+
+         List<SystemEdge> edges = request.getEdges()
+            .stream()
+            .map(edge -> new SystemEdge(
+                    edge.getId(),
+                    edge.getSourceNode(),
+                    edge.getTargetNode(),
+                    edge.getRelationship()
+            ))
+            .toList();
+
+        ArchitectureGraph graph = new ArchitectureGraph(nodes, edges);
+
+        return outageSimulationEngine.simulate(graph, request.getFailedNode());
+}
 
     private ArchitectureGraphResponse.ArchitectureNode toArchitectureNodeResponse(SystemNode node) {
         return new ArchitectureGraphResponse.ArchitectureNode(

@@ -14,6 +14,8 @@ type HealthResponse = {
   service: string;
 };
 
+type SimulationMode = "outage" | "schema-change";
+
 type SimulationResult = {
   failedNode: string;
   severity: string;
@@ -58,10 +60,6 @@ const nodePositions: Record<string, { x: number; y: number }> = {
   "web-app": { x: 900, y: 280 },
 };
 
-function normalizeNodeName(name: string) {
-  return name.toLowerCase().replaceAll(" ", "-");
-}
-
 function getNodeImpactClass(
   label: string,
   simulation: SimulationResult | null
@@ -89,6 +87,8 @@ function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [nodes, setNodes] = useState<string[]>([]);
   const [selectedNode, setSelectedNode] = useState("Payment Provider");
+  const [simulationMode, setSimulationMode] =
+    useState<SimulationMode>("outage");
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [graph, setGraph] = useState<ArchitectureGraphResponse | null>(null);
   const [error, setError] = useState<string>("");
@@ -177,18 +177,28 @@ function App() {
     }
   }
 
-  async function runOutageSimulation() {
+  async function runSimulation() {
     try {
       setError("");
       setSimulation(null);
       setIsSimulating(true);
 
-      const response = await fetch("http://localhost:8080/api/simulations/outage", {
+      const endpoint =
+        simulationMode === "outage"
+          ? "http://localhost:8080/api/simulations/outage"
+          : "http://localhost:8080/api/simulations/schema-change";
+
+      const requestBody =
+        simulationMode === "outage"
+          ? { failedNode: selectedNode }
+          : { changedNode: selectedNode };
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ failedNode: selectedNode }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -198,12 +208,18 @@ function App() {
       const data: SimulationResult = await response.json();
       setSimulation(data);
     } catch (err) {
-      setError("Could not run the outage simulation.");
+      setError("Could not run the simulation.");
       setSimulation(null);
     } finally {
       setIsSimulating(false);
     }
   }
+
+  const simulationTitle =
+    simulationMode === "outage" ? "Outage Simulation" : "Schema Change Simulation";
+
+  const selectedNodeLabel =
+    simulationMode === "outage" ? "Failed node" : "Changed node";
 
   return (
     <main className="app">
@@ -219,19 +235,49 @@ function App() {
         </p>
 
         <div className="action-panel">
-          <h2>Outage Simulation</h2>
+          <h2>{simulationTitle}</h2>
 
           <p>
-            Choose a system node and simulate what happens when it becomes
-            unavailable.
+            Choose a system node and simulate how impact propagates through the
+            architecture.
           </p>
+
+          <div className="mode-toggle">
+            <button
+              className={
+                simulationMode === "outage"
+                  ? "mode-button active"
+                  : "mode-button"
+              }
+              onClick={() => {
+                setSimulationMode("outage");
+                setSimulation(null);
+              }}
+            >
+              Service Outage
+            </button>
+
+            <button
+              className={
+                simulationMode === "schema-change"
+                  ? "mode-button active"
+                  : "mode-button"
+              }
+              onClick={() => {
+                setSimulationMode("schema-change");
+                setSimulation(null);
+              }}
+            >
+              Schema Change
+            </button>
+          </div>
 
           <div className="simulation-controls">
             <div>
-              <label htmlFor="failed-node">Failed node</label>
+              <label htmlFor="selected-node">{selectedNodeLabel}</label>
 
               <select
-                id="failed-node"
+                id="selected-node"
                 value={selectedNode}
                 onChange={(event) => setSelectedNode(event.target.value)}
               >
@@ -243,8 +289,8 @@ function App() {
               </select>
             </div>
 
-            <button onClick={runOutageSimulation} disabled={isSimulating}>
-              {isSimulating ? "Running Simulation..." : "Run Outage Simulation"}
+            <button onClick={runSimulation} disabled={isSimulating}>
+              {isSimulating ? "Running Simulation..." : `Run ${simulationTitle}`}
             </button>
           </div>
         </div>
@@ -257,10 +303,22 @@ function App() {
             </div>
 
             <div className="legend">
-              <span><i className="legend-dot failed" />Failed</span>
-              <span><i className="legend-dot direct-dot" />Direct</span>
-              <span><i className="legend-dot indirect-dot" />Indirect</span>
-              <span><i className="legend-dot unaffected-dot" />Unaffected</span>
+              <span>
+                <i className="legend-dot failed" />
+                Source
+              </span>
+              <span>
+                <i className="legend-dot direct-dot" />
+                Direct
+              </span>
+              <span>
+                <i className="legend-dot indirect-dot" />
+                Indirect
+              </span>
+              <span>
+                <i className="legend-dot unaffected-dot" />
+                Unaffected
+              </span>
             </div>
           </div>
 
@@ -276,8 +334,16 @@ function App() {
           <div className="result-card">
             <div className="result-header">
               <div>
-                <p className="eyebrow">Simulation Result</p>
-                <h2>{simulation.failedNode} Outage</h2>
+                <p className="eyebrow">
+                  {simulationMode === "outage"
+                    ? "Outage Simulation Result"
+                    : "Schema Change Simulation Result"}
+                </p>
+
+                <h2>
+                  {simulation.failedNode}{" "}
+                  {simulationMode === "outage" ? "Outage" : "Schema Change"}
+                </h2>
               </div>
 
               <span className={`severity severity-${simulation.severity}`}>
@@ -286,31 +352,42 @@ function App() {
             </div>
 
             <p className="explanation">{simulation.explanation}</p>
-          <div className="impact-paths">
-  <h3>Impact Paths</h3>
 
-  {simulation.impactPaths.length > 0 ? (
-    <div className="path-list">
-      {simulation.impactPaths.map((path, index) => (
-        <div className="impact-path" key={`${path.join("-")}-${index}`}>
-          {path.map((node, nodeIndex) => (
-            <span key={`${node}-${nodeIndex}`}>
-              <span className={nodeIndex === 0 ? "path-node failed-path-node" : "path-node"}>
-                {node}
-              </span>
+            <div className="impact-paths">
+              <h3>Impact Paths</h3>
 
-              {nodeIndex < path.length - 1 && (
-                <span className="path-arrow">→</span>
+              {simulation.impactPaths.length > 0 ? (
+                <div className="path-list">
+                  {simulation.impactPaths.map((path, index) => (
+                    <div
+                      className="impact-path"
+                      key={`${path.join("-")}-${index}`}
+                    >
+                      {path.map((node, nodeIndex) => (
+                        <span key={`${node}-${nodeIndex}`}>
+                          <span
+                            className={
+                              nodeIndex === 0
+                                ? "path-node failed-path-node"
+                                : "path-node"
+                            }
+                          >
+                            {node}
+                          </span>
+
+                          {nodeIndex < path.length - 1 && (
+                            <span className="path-arrow">→</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>No downstream impact paths found.</p>
               )}
-            </span>
-          ))}
-        </div>
-      ))}
-    </div>
-  ) : (
-    <p>No downstream impact paths found.</p>
-  )}
-</div>
+            </div>
+
             <div className="impact-grid">
               <div className="impact-column direct">
                 <h3>Directly Affected</h3>
