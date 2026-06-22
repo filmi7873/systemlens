@@ -1,72 +1,120 @@
-# SystemLens
+# System Lens
 
-SystemLens is a full-stack architecture simulation platform that lets developers model software systems and simulate outages, schema changes, and traffic spikes to understand downstream impact before production.
+System Lens is a full-stack architecture simulation platform for modeling software systems as dependency graphs and analyzing downstream impact from outages and schema changes.
 
-## Problem
+The app uses a sample e-commerce architecture made up of frontend services, backend services, databases, queues, external providers, and workers. Users can select a system node, run an outage or schema-change simulation, and view direct impact, indirect impact, unaffected systems, impact paths, and a deployment readiness risk assessment.
 
-Modern software systems depend on many moving parts: frontend clients, APIs, databases, queues, workers, caches, and external services. When one part fails or changes, it can be difficult to quickly understand what else is affected.
+## Features
 
-SystemLens helps developers reason about system behavior by modeling architecture as a dependency graph and running simulations against that graph.
-
-## MVP
-
-The MVP allows users to:
-
-- view a sample software architecture graph
-- simulate a service outage
-- see directly and indirectly affected systems
-- view severity and impact explanations
-- eventually create custom architecture maps
+- Interactive system dependency graph
+- Outage impact simulation
+- Schema-change impact simulation
+- Direct vs. indirect downstream impact classification
+- Impact path generation through graph traversal
+- Risk assessment and deployment readiness report
+- React frontend connected to a Spring Boot API
+- Backend health check endpoint
 
 ## Tech Stack
 
-- Frontend: React, TypeScript
-- Backend: Spring Boot, Java
-- Database: PostgreSQL later
-- Visualization: React Flow later
-- Simulation Model: Graph traversal and impact scoring
+### Frontend
+- React
+- TypeScript
+- Vite
+- React Flow
+- CSS
 
-## Status
+### Backend
+- Java
+- Spring Boot
+- Maven
+- REST APIs
 
-In development.
+## How It Works
 
-## Roadmap
+System Lens represents architecture dependencies as directed edges.
 
-### Sprint 0: Project Pivot
+For example:
 
-- Rename product from RepoScope to SystemLens
-- Update documentation
-- Keep existing React/Spring Boot foundation
-- Define MVP simulation model
+```text
+Payment Provider -> Checkout Service -> Web App
+```
+## API Endpoints
 
-### Sprint 1: Sample Simulation API
+#### Health Check
+```bash 
+GET /api/health
+```
+#### Get Sample Nodes
+```bash
+GET /api/simulations/sample/nodes
+```
+#### Get Sample Graph
+```bash
+GET /api/simulations/sample/graph
+```
+#### Run Outage Simulation
+```bash
+POST /api/simulations/outage/analyze
+```
+#### Request body:
+```bash 
+{
+  "failedNode": "Payment Provider"
+}
+```
 
-- Create backend model for system nodes and dependencies
-- Create outage simulation endpoint
-- Return affected nodes and impact severity
-- Display simulation results in React
+#### Run Schema Change Simulation
+```bash 
+POST /api/simulations/schema-change/analyze
+```
 
-### Sprint 2: Interactive Architecture UI
+#### Request body:
+```bash 
+{
+  "changedNode": "Inventory Database"
+}
+``` 
+## Running Locally
+**Backend**
 
-- Display system nodes and relationships
-- Add sample architecture templates
-- Allow users to select a failure point
+From the backend folder:
+```bash
+./mvnw spring-boot:run
+```
+On Windows PowerShell:
+```bash
+.\mvnw.cmd spring-boot:run
+```
+The backend runs on:
+```bash
+http://localhost:8080
+```
+**Frontend**
 
-### Sprint 3: Graph Visualization
+From the frontend folder:
+```bash
+npm install
+npm run dev
+```
+The frontend runs on:
+```bash
+http://localhost:5173
+```
 
-- Integrate React Flow
-- Visualize affected systems
-- Highlight direct and indirect impact
+## Project Status
 
-### Sprint 4: Custom Systems
+System Lens currently uses a predefined sample architecture to demonstrate the core simulation engine. Future improvements could include creating custom systems from the UI, saving architectures to a database, importing service maps, and adding authentication for multiple users.
 
-- Let users create nodes
-- Let users connect dependencies
-- Persist systems in database
 
-### Sprint 5: Advanced Simulations
+## My next recommendation
 
-- Schema change impact
-- Traffic spike impact
-- Risk scoring
-- mitigation recommendations
+Do these in order:
+
+1. Add the missing `Notification Worker -> Web App` edge.
+2. Add cycle protection to `OutageSimulationEngine`.
+3. Check `SchemaChangeSimulationEngine` to make sure it is also dynamic.
+4. Replace the README.
+5. Make the default selected node `Payment Provider` instead of `Web App`.
+
+Then this project is honestly portfolio-presentable.
