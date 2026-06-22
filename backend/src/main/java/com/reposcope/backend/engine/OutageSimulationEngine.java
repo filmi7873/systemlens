@@ -86,35 +86,46 @@ public class OutageSimulationEngine {
         }
     }
 
-    private List<List<String>> buildImpactPaths(
-            String failedNode,
-            Map<String, List<String>> dependents
-    ) {
-        List<List<String>> paths = new ArrayList<>();
-        List<String> currentPath = new ArrayList<>();
-        currentPath.add(failedNode);
+   private List<List<String>> buildImpactPaths(
+        String failedNode,
+        Map<String, List<String>> dependents
+) {
+    List<List<String>> paths = new ArrayList<>();
+    List<String> currentPath = new ArrayList<>();
+    currentPath.add(failedNode);
 
-        collectImpactPaths(failedNode, dependents, currentPath, paths);
+    Set<String> visited = new LinkedHashSet<>();
+    visited.add(failedNode);
 
-        return paths;
-    }
+    collectImpactPaths(failedNode, dependents, currentPath, paths, visited);
 
-    private void collectImpactPaths(
-            String currentNode,
-            Map<String, List<String>> dependents,
-            List<String> currentPath,
-            List<List<String>> paths
-    ) {
-        List<String> nextDependents = dependents.getOrDefault(currentNode, List.of());
+    return paths;
+}
 
-        for (String dependent : nextDependents) {
-            List<String> newPath = new ArrayList<>(currentPath);
-            newPath.add(dependent);
-            paths.add(newPath);
+private void collectImpactPaths(
+        String currentNode,
+        Map<String, List<String>> dependents,
+        List<String> currentPath,
+        List<List<String>> paths,
+        Set<String> visited
+) {
+    List<String> nextDependents = dependents.getOrDefault(currentNode, List.of());
 
-            collectImpactPaths(dependent, dependents, newPath, paths);
+    for (String dependent : nextDependents) {
+        if (visited.contains(dependent)) {
+            continue;
         }
+
+        List<String> newPath = new ArrayList<>(currentPath);
+        newPath.add(dependent);
+        paths.add(newPath);
+
+        Set<String> newVisited = new LinkedHashSet<>(visited);
+        newVisited.add(dependent);
+
+        collectImpactPaths(dependent, dependents, newPath, paths, newVisited);
     }
+}
 
     private String calculateSeverity(
             List<String> directlyAffected,
