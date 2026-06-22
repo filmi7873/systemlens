@@ -82,7 +82,7 @@ On Windows PowerShell:
 The backend runs on:
 
 http://localhost:8080
-Frontend
+**Frontend**
 
 From the frontend folder:
 
@@ -92,7 +92,7 @@ npm run dev
 The frontend runs on:
 
 http://localhost:5173
-Project Status
+## Project Status
 
 System Lens currently uses a predefined sample architecture to demonstrate the core simulation engine. Future improvements could include creating custom systems from the UI, saving architectures to a database, importing service maps, and adding authentication for multiple users.
 
