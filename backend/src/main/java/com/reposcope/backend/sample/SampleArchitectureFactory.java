@@ -29,13 +29,17 @@ public class SampleArchitectureFactory {
                 new SystemEdge("edge-auth-web", "Auth Service", "Web App", "supports"),
                 new SystemEdge("edge-product-web", "Product Service", "Web App", "supports"),
                 new SystemEdge("edge-inventory-web", "Inventory Service", "Web App", "supports"),
+
                 new SystemEdge("edge-cart-checkout", "Cart Service", "Checkout Service", "supports"),
                 new SystemEdge("edge-inventory-checkout", "Inventory Service", "Checkout Service", "supports"),
                 new SystemEdge("edge-checkout-web", "Checkout Service", "Web App", "supports"),
+
                 new SystemEdge("edge-payment-checkout", "Payment Provider", "Checkout Service", "supports"),
                 new SystemEdge("edge-order-checkout", "Order Database", "Checkout Service", "supports"),
                 new SystemEdge("edge-inventory-db-service", "Inventory Database", "Inventory Service", "supports"),
-                new SystemEdge("edge-email-worker", "Email Queue", "Notification Worker", "supports")
+
+                new SystemEdge("edge-email-worker", "Email Queue", "Notification Worker", "supports"),
+                new SystemEdge("edge-notification-web", "Notification Worker", "Web App", "supports")
         );
 
         return new ArchitectureGraph(nodes, edges);
