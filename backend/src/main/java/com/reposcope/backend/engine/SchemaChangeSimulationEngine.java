@@ -28,7 +28,15 @@ public class SchemaChangeSimulationEngine {
         Set<String> indirectlyAffectedSet = new LinkedHashSet<>();
 
         for (String directNode : directlyAffected) {
-            collectDownstreamImpact(directNode, dependents, indirectlyAffectedSet);
+            Set<String> visited = new LinkedHashSet<>();
+            visited.add(changedNode);
+
+            collectDownstreamImpact(
+                    directNode,
+                    dependents,
+                    indirectlyAffectedSet,
+                    visited
+            );
         }
 
         indirectlyAffectedSet.removeAll(directlyAffected);
@@ -41,7 +49,8 @@ public class SchemaChangeSimulationEngine {
         impacted.addAll(directlyAffected);
         impacted.addAll(indirectlyAffected);
 
-        List<String> unaffected = graph.getNodeLabels().stream()
+        List<String> unaffected = graph.getNodeLabels()
+                .stream()
                 .filter(node -> !impacted.contains(node))
                 .toList();
 
@@ -94,7 +103,7 @@ public class SchemaChangeSimulationEngine {
     ) {
         String changedNodeType = getNodeType(graph, changedNode);
 
-        if (changedNodeType.equals("frontend")) {
+        if (changedNodeType.equalsIgnoreCase("frontend")) {
             return List.of();
         }
 
@@ -104,13 +113,25 @@ public class SchemaChangeSimulationEngine {
     private void collectDownstreamImpact(
             String node,
             Map<String, List<String>> dependents,
-            Set<String> impactedNodes
+            Set<String> impactedNodes,
+            Set<String> visited
     ) {
+        if (visited.contains(node)) {
+            return;
+        }
+
+        visited.add(node);
+
         List<String> nextDependents = dependents.getOrDefault(node, List.of());
 
         for (String dependent : nextDependents) {
             if (impactedNodes.add(dependent)) {
-                collectDownstreamImpact(dependent, dependents, impactedNodes);
+                collectDownstreamImpact(
+                        dependent,
+                        dependents,
+                        impactedNodes,
+                        visited
+                );
             }
         }
     }
@@ -128,7 +149,18 @@ public class SchemaChangeSimulationEngine {
             currentPath.add(directNode);
 
             paths.add(currentPath);
-            collectImpactPaths(directNode, dependents, currentPath, paths);
+
+            Set<String> visited = new LinkedHashSet<>();
+            visited.add(changedNode);
+            visited.add(directNode);
+
+            collectImpactPaths(
+                    directNode,
+                    dependents,
+                    currentPath,
+                    paths,
+                    visited
+            );
         }
 
         return paths;
@@ -138,16 +170,30 @@ public class SchemaChangeSimulationEngine {
             String currentNode,
             Map<String, List<String>> dependents,
             List<String> currentPath,
-            List<List<String>> paths
+            List<List<String>> paths,
+            Set<String> visited
     ) {
         List<String> nextDependents = dependents.getOrDefault(currentNode, List.of());
 
         for (String dependent : nextDependents) {
+            if (visited.contains(dependent)) {
+                continue;
+            }
+
             List<String> newPath = new ArrayList<>(currentPath);
             newPath.add(dependent);
             paths.add(newPath);
 
-            collectImpactPaths(dependent, dependents, newPath, paths);
+            Set<String> newVisited = new LinkedHashSet<>(visited);
+            newVisited.add(dependent);
+
+            collectImpactPaths(
+                    dependent,
+                    dependents,
+                    newPath,
+                    paths,
+                    newVisited
+            );
         }
     }
 
@@ -160,11 +206,11 @@ public class SchemaChangeSimulationEngine {
         String changedNodeType = getNodeType(graph, changedNode);
         int impactCount = directlyAffected.size() + indirectlyAffected.size();
 
-        if (changedNodeType.equals("database") && impactCount >= 2) {
+        if (changedNodeType.equalsIgnoreCase("database") && impactCount >= 2) {
             return "high";
         }
 
-        if (changedNodeType.equals("external") && impactCount >= 2) {
+        if (changedNodeType.equalsIgnoreCase("external") && impactCount >= 2) {
             return "high";
         }
 
