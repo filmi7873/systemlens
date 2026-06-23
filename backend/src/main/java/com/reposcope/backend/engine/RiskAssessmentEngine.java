@@ -35,13 +35,13 @@ public class RiskAssessmentEngine {
                 .max(Comparator.naturalOrder())
                 .orElse(1);
 
-        if (sourceType.equals("database")) {
+        if (sourceType.equalsIgnoreCase("database")) {
             riskScore += 25;
             riskFactors.add("The change originates from a database, which can affect downstream services that depend on its schema.");
             recommendations.add("Prepare or verify a rollback plan before applying database changes.");
         }
 
-        if (sourceType.equals("external")) {
+        if (sourceType.equalsIgnoreCase("external")) {
             riskScore += 20;
             riskFactors.add("The impact starts from an external provider, which may be harder to control or rollback.");
             recommendations.add("Verify provider fallback behavior and error handling.");
@@ -77,7 +77,7 @@ public class RiskAssessmentEngine {
             recommendations.add("Smoke test the checkout/payment flow before release.");
         }
 
-        if (simulationType.equals("schema-change")) {
+        if (simulationType.equalsIgnoreCase("schema-change")) {
             riskScore += 10;
             riskFactors.add("Schema or contract changes may require consumer validation even if services remain online.");
             recommendations.add("Run integration tests for direct consumers of the changed contract.");
@@ -124,7 +124,7 @@ public class RiskAssessmentEngine {
         return graph.getNodes()
                 .stream()
                 .filter(node -> affectedNodes.contains(node.getLabel()))
-                .anyMatch(node -> node.getType().equals(nodeType));
+                .anyMatch(node -> node.getType().equalsIgnoreCase(nodeType));
     }
 
     private boolean touchesImportantBusinessFlow(SimulationResultResponse simulation) {
