@@ -137,6 +137,80 @@ public class SimulationService {
         return new SimulationAnalysisResponse(simulation, riskAssessment);
     }
 
+    public SimulationAnalysisResponse runCustomOutageAnalysis(
+            CustomOutageSimulationRequest request
+    ) {
+        ArchitectureGraph graph = buildCustomGraph(
+                request.getNodes()
+                        .stream()
+                        .map(node -> new SystemNode(
+                                node.getId(),
+                                node.getLabel(),
+                                node.getType()
+                        ))
+                        .toList(),
+                request.getEdges()
+                        .stream()
+                        .map(edge -> new SystemEdge(
+                                edge.getId(),
+                                edge.getSourceNode(),
+                                edge.getTargetNode(),
+                                edge.getRelationship()
+                        ))
+                        .toList()
+        );
+
+        SimulationResultResponse simulation = outageSimulationEngine.simulate(
+                graph,
+                request.getFailedNode()
+        );
+
+        RiskAssessmentResponse riskAssessment = riskAssessmentEngine.assess(
+                graph,
+                simulation,
+                "outage"
+        );
+
+        return new SimulationAnalysisResponse(simulation, riskAssessment);
+    }
+
+    public SimulationAnalysisResponse runCustomSchemaChangeAnalysis(
+            CustomSchemaChangeSimulationRequest request
+    ) {
+        ArchitectureGraph graph = buildCustomGraph(
+                request.getNodes()
+                        .stream()
+                        .map(node -> new SystemNode(
+                                node.getId(),
+                                node.getLabel(),
+                                node.getType()
+                        ))
+                        .toList(),
+                request.getEdges()
+                        .stream()
+                        .map(edge -> new SystemEdge(
+                                edge.getId(),
+                                edge.getSourceNode(),
+                                edge.getTargetNode(),
+                                edge.getRelationship()
+                        ))
+                        .toList()
+        );
+
+        SimulationResultResponse simulation = schemaChangeSimulationEngine.simulate(
+                graph,
+                request.getChangedNode()
+        );
+
+        RiskAssessmentResponse riskAssessment = riskAssessmentEngine.assess(
+                graph,
+                simulation,
+                "schema-change"
+        );
+
+        return new SimulationAnalysisResponse(simulation, riskAssessment);
+    }
+
     public List<String> getSampleNodes() {
         ArchitectureGraph graph = sampleArchitectureFactory.createEcommerceArchitecture();
         return graph.getNodeLabels();

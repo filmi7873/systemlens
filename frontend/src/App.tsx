@@ -1,3 +1,4 @@
+import CustomArchitectureBuilder from "./components/CustomArchitectureBuilder";
 import { useEffect, useMemo, useState } from "react";
 import {
   Background,
