@@ -22,6 +22,11 @@ const NODE_TYPES = [
 
 const starterNodes: ArchitectureNode[] = [
   {
+    id: "user-database",
+    label: "User Database",
+    type: "database",
+  },
+  {
     id: "auth-service",
     label: "Auth Service",
     type: "service",
@@ -36,9 +41,30 @@ const starterNodes: ArchitectureNode[] = [
     label: "Web App",
     type: "frontend",
   },
+  {
+    id: "payment-provider",
+    label: "Payment Provider",
+    type: "external",
+  },
+  {
+    id: "checkout-service",
+    label: "Checkout Service",
+    type: "service",
+  },
+  {
+    id: "order-database",
+    label: "Order Database",
+    type: "database",
+  },
 ];
 
 const starterEdges: ArchitectureEdge[] = [
+  {
+    id: "edge-user-database-auth-service",
+    sourceNode: "User Database",
+    targetNode: "Auth Service",
+    relationship: "supports",
+  },
   {
     id: "edge-auth-service-api-gateway",
     sourceNode: "Auth Service",
@@ -48,6 +74,24 @@ const starterEdges: ArchitectureEdge[] = [
   {
     id: "edge-api-gateway-web-app",
     sourceNode: "API Gateway",
+    targetNode: "Web App",
+    relationship: "supports",
+  },
+  {
+    id: "edge-payment-provider-checkout-service",
+    sourceNode: "Payment Provider",
+    targetNode: "Checkout Service",
+    relationship: "supports",
+  },
+  {
+    id: "edge-order-database-checkout-service",
+    sourceNode: "Order Database",
+    targetNode: "Checkout Service",
+    relationship: "supports",
+  },
+  {
+    id: "edge-checkout-service-web-app",
+    sourceNode: "Checkout Service",
     targetNode: "Web App",
     relationship: "supports",
   },

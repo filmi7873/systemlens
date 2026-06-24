@@ -60,22 +60,23 @@ function isEdgeImpacted(
 }
 
 function getNodePosition(
-  index: number,
-  total: number
+  node: ArchitectureNode,
+  index: number
 ): { x: number; y: number } {
-  if (total <= 3) {
-    return {
-      x: index * 300,
-      y: index % 2 === 0 ? 120 : 260,
-    };
-  }
+  const typeColumnMap: Record<string, number> = {
+    database: 0,
+    external: 0,
+    queue: 0,
+    service: 1,
+    worker: 1,
+    frontend: 2,
+  };
 
-  const column = index % 3;
-  const row = Math.floor(index / 3);
+  const column = typeColumnMap[node.type] ?? 1;
 
   return {
-    x: column * 300,
-    y: row * 160 + 80,
+    x: column * 320,
+    y: index * 95 + 80,
   };
 }
 
@@ -94,7 +95,7 @@ export default function CustomArchitectureGraph({
   const flowNodes: Node[] = useMemo(() => {
     return nodes.map((node, index) => ({
       id: node.id,
-      position: getNodePosition(index, nodes.length),
+      position: getNodePosition(node, index),
       data: {
         label: (
           <div>
