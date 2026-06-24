@@ -159,6 +159,78 @@
   border: 1px solid rgba(248, 113, 113, 0.3);
 }
 
+.builder-status {
+  margin: 1rem 0;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  color: #bbf7d0;
+  background: rgba(22, 101, 52, 0.24);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.saved-architecture-text {
+  margin-top: 0.75rem;
+  color: #bfdbfe;
+  font-size: 0.9rem;
+}
+
+.compliance-section {
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+}
+
+.compliance-section .helper-text {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.builder-card label.checkbox-row {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  margin: 0.45rem 0 0.85rem;
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.builder-card label.checkbox-row input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  accent-color: #60a5fa;
+}
+
+.tag-checkbox-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.builder-card label.tag-checkbox {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 999px;
+  color: #bfdbfe;
+  font-size: 0.75rem;
+  padding: 0.45rem 0.6rem;
+  margin: 0;
+}
+
+.node-compliance-summary {
+  color: #fbbf24;
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+}
+
 .custom-graph-card {
   margin: 1rem 0;
   border: 1px solid rgba(96, 165, 250, 0.22);
@@ -520,18 +592,4 @@
   .blast-radius-grid {
     grid-template-columns: 1fr;
   }
-  .saved-architecture-text {
-  margin-top: 0.75rem;
-  color: #bfdbfe;
-  font-size: 0.9rem;
-}
-
-.builder-status {
-  margin: 1rem 0;
-  padding: 0.9rem 1rem;
-  border-radius: 16px;
-  color: #bbf7d0;
-  background: rgba(22, 101, 52, 0.24);
-  border: 1px solid rgba(74, 222, 128, 0.3);
-}
 }
