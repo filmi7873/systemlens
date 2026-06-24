@@ -1,4 +1,5 @@
 import type {
+  CustomAuthFailureSimulationRequest,
   CustomOutageSimulationRequest,
   CustomSchemaChangeSimulationRequest,
   SimulationAnalysisResponse,
@@ -43,6 +44,18 @@ export function runCustomSchemaChangeAnalysis(
 ): Promise<SimulationAnalysisResponse> {
   return requestJson<SimulationAnalysisResponse>(
     "/api/simulations/schema-change/custom/analyze",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
+export function runCustomAuthFailureAnalysis(
+  payload: CustomAuthFailureSimulationRequest
+): Promise<SimulationAnalysisResponse> {
+  return requestJson<SimulationAnalysisResponse>(
+    "/api/simulations/auth-failure/custom/analyze",
     {
       method: "POST",
       body: JSON.stringify(payload),

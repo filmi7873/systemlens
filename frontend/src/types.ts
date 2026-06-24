@@ -39,6 +39,7 @@ export type ArchitectureEdge = {
 export type SimulationResultResponse = {
   failedNode?: string;
   changedNode?: string;
+  authNode?: string;
   severity: string;
   directlyAffected: string[];
   indirectlyAffected: string[];
@@ -69,4 +70,10 @@ export type CustomSchemaChangeSimulationRequest = {
   nodes: ArchitectureNode[];
   edges: ArchitectureEdge[];
   changedNode: string;
+};
+
+export type CustomAuthFailureSimulationRequest = {
+  nodes: ArchitectureNode[];
+  edges: ArchitectureEdge[];
+  authNode: string;
 };
