@@ -290,7 +290,7 @@ Possible future improvements include:
 - Export simulation reports
 - Compare two simulation scenarios
 - Add more starter architecture templates
-- Add backend tests for graph traversal and risk scoring
+- Expand backend test coverage for additional simulation and risk-scoring scenarios
 - Deploy the frontend and backend
 ### What This Project Demonstrates
 
