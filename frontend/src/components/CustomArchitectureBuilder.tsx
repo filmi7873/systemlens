@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  runCustomAuthFailureAnalysis,
   runCustomOutageAnalysis,
   runCustomSchemaChangeAnalysis,
 } from "../api/systemLensApi";
@@ -25,6 +26,8 @@ const NODE_TYPES = [
 const COMPLIANCE_TAGS: ComplianceTag[] = ["PII", "PCI", "HIPAA", "SOC2", "GDPR"];
 
 const SAVED_ARCHITECTURE_KEY = "systemlens:saved-architecture";
+
+type SimulationType = "outage" | "schema-change" | "auth-failure";
 
 type SavedArchitecture = {
   nodes: ArchitectureNode[];
@@ -208,6 +211,38 @@ function formatComplianceSummary(node: ArchitectureNode): string {
   return [...new Set(summaryParts)].join(" · ");
 }
 
+function isAuthRelatedNode(node: ArchitectureNode): boolean {
+  const label = node.label.toLowerCase();
+  const type = node.type.toLowerCase();
+
+  return (
+    label.includes("auth") ||
+    label.includes("identity") ||
+    label.includes("login") ||
+    label.includes("session") ||
+    label.includes("permission") ||
+    label.includes("token") ||
+    label.includes("sso") ||
+    label.includes("oauth") ||
+    label.includes("oidc") ||
+    label.includes("keycloak") ||
+    type.includes("auth") ||
+    type.includes("identity")
+  );
+}
+
+function getSimulationTitle(simulationType: SimulationType): string {
+  if (simulationType === "outage") {
+    return "Outage";
+  }
+
+  if (simulationType === "schema-change") {
+    return "Schema Change";
+  }
+
+  return "Auth Failure";
+}
+
 export default function CustomArchitectureBuilder() {
   const [nodes, setNodes] = useState<ArchitectureNode[]>(
     starterNodes.map(normalizeNode)
@@ -224,9 +259,8 @@ export default function CustomArchitectureBuilder() {
   const [sourceNode, setSourceNode] = useState(starterNodes[0].label);
   const [targetNode, setTargetNode] = useState(starterNodes[1].label);
 
-  const [simulationType, setSimulationType] = useState<
-    "outage" | "schema-change"
-  >("outage");
+  const [simulationType, setSimulationType] =
+    useState<SimulationType>("outage");
 
   const [selectedSourceNode, setSelectedSourceNode] = useState(
     starterNodes[0].label
@@ -242,7 +276,18 @@ export default function CustomArchitectureBuilder() {
 
   const nodeLabels = useMemo(() => nodes.map((node) => node.label), [nodes]);
 
-  const canRunSimulation = nodes.length > 0 && selectedSourceNode.trim() !== "";
+  const simulationSourceOptions = useMemo(() => {
+    if (simulationType === "auth-failure") {
+      return nodes.filter(isAuthRelatedNode).map((node) => node.label);
+    }
+
+    return nodeLabels;
+  }, [nodes, nodeLabels, simulationType]);
+
+  const canRunSimulation =
+    nodes.length > 0 &&
+    selectedSourceNode.trim() !== "" &&
+    simulationSourceOptions.includes(selectedSourceNode);
 
   const totalImpactedSystems = analysis
     ? analysis.simulation.directlyAffected.length +
@@ -256,6 +301,19 @@ export default function CustomArchitectureBuilder() {
       setSavedAt(savedArchitecture.savedAt);
     }
   }, []);
+
+  useEffect(() => {
+    if (simulationSourceOptions.length === 0) {
+      setSelectedSourceNode("");
+      resetResultState();
+      return;
+    }
+
+    if (!simulationSourceOptions.includes(selectedSourceNode)) {
+      setSelectedSourceNode(simulationSourceOptions[0]);
+      resetResultState();
+    }
+  }, [simulationSourceOptions, selectedSourceNode]);
 
   function resetResultState() {
     setAnalysis(null);
@@ -483,8 +541,16 @@ export default function CustomArchitectureBuilder() {
   }
 
   async function runSimulation() {
+    if (simulationType === "auth-failure" && simulationSourceOptions.length === 0) {
+      setError(
+        "Add an auth-related node first, such as Auth Service, Identity Provider, Session Service, Token Service, SSO Provider, or Keycloak."
+      );
+      setStatusMessage("");
+      return;
+    }
+
     if (!canRunSimulation) {
-      setError("Choose a source node before running a simulation.");
+      setError("Choose a valid source node before running a simulation.");
       setStatusMessage("");
       return;
     }
@@ -501,18 +567,27 @@ export default function CustomArchitectureBuilder() {
     setAnalysis(null);
 
     try {
-      const response =
-        simulationType === "outage"
-          ? await runCustomOutageAnalysis({
-              nodes,
-              edges,
-              failedNode: selectedSourceNode,
-            })
-          : await runCustomSchemaChangeAnalysis({
-              nodes,
-              edges,
-              changedNode: selectedSourceNode,
-            });
+      let response: SimulationAnalysisResponse;
+
+      if (simulationType === "outage") {
+        response = await runCustomOutageAnalysis({
+          nodes,
+          edges,
+          failedNode: selectedSourceNode,
+        });
+      } else if (simulationType === "schema-change") {
+        response = await runCustomSchemaChangeAnalysis({
+          nodes,
+          edges,
+          changedNode: selectedSourceNode,
+        });
+      } else {
+        response = await runCustomAuthFailureAnalysis({
+          nodes,
+          edges,
+          authNode: selectedSourceNode,
+        });
+      }
 
       setAnalysis(response);
     } catch (caughtError) {
@@ -716,6 +791,7 @@ export default function CustomArchitectureBuilder() {
               className={simulationType === "outage" ? "active" : ""}
               onClick={() => {
                 setSimulationType("outage");
+                setSelectedSourceNode(nodeLabels[0] ?? "");
                 resetResultState();
               }}
             >
@@ -727,10 +803,24 @@ export default function CustomArchitectureBuilder() {
               className={simulationType === "schema-change" ? "active" : ""}
               onClick={() => {
                 setSimulationType("schema-change");
+                setSelectedSourceNode(nodeLabels[0] ?? "");
                 resetResultState();
               }}
             >
               Schema Change
+            </button>
+
+            <button
+              type="button"
+              className={simulationType === "auth-failure" ? "active" : ""}
+              onClick={() => {
+                setSimulationType("auth-failure");
+                const firstAuthNode = nodes.find(isAuthRelatedNode)?.label ?? "";
+                setSelectedSourceNode(firstAuthNode);
+                resetResultState();
+              }}
+            >
+              Auth Failure
             </button>
           </div>
 
@@ -742,15 +832,24 @@ export default function CustomArchitectureBuilder() {
                 setSelectedSourceNode(event.target.value);
                 resetResultState();
               }}
-              disabled={nodes.length === 0}
+              disabled={simulationSourceOptions.length === 0}
             >
-              {nodeLabels.map((label) => (
+              {simulationSourceOptions.map((label) => (
                 <option key={label} value={label}>
                   {label}
                 </option>
               ))}
             </select>
           </label>
+
+          {simulationType === "auth-failure" &&
+            simulationSourceOptions.length === 0 && (
+              <p className="helper-text">
+                Add an auth-related node first, such as Auth Service, Identity
+                Provider, Session Service, Token Service, SSO Provider, or
+                Keycloak.
+              </p>
+            )}
 
           <button
             type="button"
@@ -786,6 +885,7 @@ export default function CustomArchitectureBuilder() {
               <strong>
                 {analysis.simulation.failedNode ??
                   analysis.simulation.changedNode ??
+                  analysis.simulation.authNode ??
                   selectedSourceNode}
               </strong>
             </div>
@@ -866,10 +966,7 @@ export default function CustomArchitectureBuilder() {
           <div className="analysis-panel__summary">
             <div>
               <p className="custom-builder__eyebrow">Simulation Result</p>
-              <h3>
-                {simulationType === "outage" ? "Outage" : "Schema Change"}{" "}
-                Analysis
-              </h3>
+              <h3>{getSimulationTitle(simulationType)} Analysis</h3>
               <p>{analysis.simulation.explanation}</p>
             </div>
 

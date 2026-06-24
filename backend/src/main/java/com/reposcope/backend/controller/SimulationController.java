@@ -1,6 +1,7 @@
 package com.reposcope.backend.controller;
 
 import com.reposcope.backend.dto.ArchitectureGraphResponse;
+import com.reposcope.backend.dto.CustomAuthFailureSimulationRequest;
 import com.reposcope.backend.dto.CustomOutageSimulationRequest;
 import com.reposcope.backend.dto.CustomSchemaChangeSimulationRequest;
 import com.reposcope.backend.dto.OutageSimulationRequest;
@@ -59,6 +60,13 @@ public class SimulationController {
         return simulationService.runCustomSchemaChangeSimulation(request);
     }
 
+    @PostMapping("/api/simulations/auth-failure/custom")
+    public SimulationResultResponse runCustomAuthFailureSimulation(
+            @RequestBody CustomAuthFailureSimulationRequest request
+    ) {
+        return simulationService.runCustomAuthFailureSimulation(request);
+    }
+
     @PostMapping("/api/simulations/outage/analyze")
     public SimulationAnalysisResponse runOutageAnalysis(
             @RequestBody OutageSimulationRequest request
@@ -85,6 +93,13 @@ public class SimulationController {
             @RequestBody CustomSchemaChangeSimulationRequest request
     ) {
         return simulationService.runCustomSchemaChangeAnalysis(request);
+    }
+
+    @PostMapping("/api/simulations/auth-failure/custom/analyze")
+    public SimulationAnalysisResponse runCustomAuthFailureAnalysis(
+            @RequestBody CustomAuthFailureSimulationRequest request
+    ) {
+        return simulationService.runCustomAuthFailureAnalysis(request);
     }
 
     @GetMapping("/api/simulations/sample/nodes")

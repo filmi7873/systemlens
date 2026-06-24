@@ -36,11 +36,22 @@ public class RiskAssessmentEngine {
                 .orElse(1);
 
         boolean isSchemaChange = simulationType.equalsIgnoreCase("schema-change");
+        boolean isAuthFailure = simulationType.equalsIgnoreCase("auth-failure");
+
+        if (isAuthFailure) {
+            riskScore += 18;
+            riskFactors.add("Authentication failure may affect login, token validation, session handling, or permission checks across dependent systems.");
+            recommendations.add("Test login, logout, token refresh, expired-session handling, and protected-route access behavior.");
+            recommendations.add("Confirm role-based permissions remain enforced during auth dependency failure.");
+        }
 
         if (sourceType.equalsIgnoreCase("database")) {
             riskScore += 20;
 
-            if (isSchemaChange) {
+            if (isAuthFailure) {
+                riskFactors.add("The authentication failure originates from a database-backed auth dependency, which can affect sessions, credentials, or permission lookups.");
+                recommendations.add("Verify auth data recovery, session-store consistency, and downstream service reconnection behavior.");
+            } else if (isSchemaChange) {
                 riskFactors.add("The change originates from a database, which can affect downstream services that depend on its schema.");
                 recommendations.add("Prepare or verify a rollback plan before applying database changes.");
             } else {
@@ -52,7 +63,10 @@ public class RiskAssessmentEngine {
         if (sourceType.equalsIgnoreCase("external")) {
             riskScore += 15;
 
-            if (isSchemaChange) {
+            if (isAuthFailure) {
+                riskFactors.add("The authentication failure starts from an external identity or access dependency, which may be harder to control or recover quickly.");
+                recommendations.add("Verify identity-provider fallback behavior, token validation failures, timeout handling, and protected-route error states.");
+            } else if (isSchemaChange) {
                 riskFactors.add("The change starts from an external provider, which may be harder to control or rollback.");
                 recommendations.add("Verify provider contract changes, fallback behavior, and error handling.");
             } else {
@@ -83,13 +97,23 @@ public class RiskAssessmentEngine {
         if (touchesNodeType(graph, simulation, "frontend")) {
             riskScore += 12;
             riskFactors.add("The impact reaches a frontend or customer-facing surface.");
-            recommendations.add("Run a customer-facing smoke test after backend validation.");
+
+            if (isAuthFailure) {
+                recommendations.add("Run customer-facing smoke tests for login, logout, session expiry, and protected page access.");
+            } else {
+                recommendations.add("Run a customer-facing smoke test after backend validation.");
+            }
         }
 
         if (touchesImportantBusinessFlow(simulation)) {
             riskScore += 15;
             riskFactors.add("The impact touches a checkout, payment, order, or cart-related path.");
-            recommendations.add("Smoke test the checkout/payment flow before release.");
+
+            if (isAuthFailure) {
+                recommendations.add("Smoke test checkout/payment authorization, authenticated checkout access, and permission-gated payment actions.");
+            } else {
+                recommendations.add("Smoke test the checkout/payment flow before release.");
+            }
         }
 
         if (isSchemaChange) {
