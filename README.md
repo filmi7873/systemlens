@@ -10,10 +10,6 @@ Users can model an architecture as a dependency graph, run outage or schema-chan
 
 ![Custom Architecture Builder](docs/screenshots/custom-builder.png)
 
-### Live Dependency Graph
-
-![Live Dependency Graph](docs/screenshots/custom-graph.png)
-
 ### Blast Radius Visualization
 
 ![Blast Radius Visualization](docs/screenshots/blast-radius-graph.png)
