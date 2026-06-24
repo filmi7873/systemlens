@@ -4,6 +4,24 @@ SystemLens is a full-stack architecture impact simulator that helps developers u
 
 Users can model an architecture as a dependency graph, run outage or schema-change simulations, visualize downstream blast radius, and generate deployment risk reports with recommended validation steps.
 
+## Demo
+
+### Custom Architecture Builder
+
+![Custom Architecture Builder](docs/screenshots/custom-builder.png)
+
+### Live Dependency Graph
+
+![Live Dependency Graph](docs/screenshots/custom-graph.png)
+
+### Blast Radius Visualization
+
+![Blast Radius Visualization](docs/screenshots/blast-radius-graph.png)
+
+### Risk Assessment Report
+
+![Risk Assessment Report](docs/screenshots/risk-report.png)
+
 ## Why I Built This
 
 Modern software systems are interconnected. A database outage, external provider failure, or backend contract change can affect services and customer-facing flows in ways that are not always obvious.
