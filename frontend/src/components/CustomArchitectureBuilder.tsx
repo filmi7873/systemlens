@@ -6,6 +6,8 @@ import {
 import type {
   ArchitectureEdge,
   ArchitectureNode,
+  ComplianceTag,
+  DataSensitivity,
   SimulationAnalysisResponse,
 } from "../types";
 import "./CustomArchitectureBuilder.css";
@@ -20,6 +22,8 @@ const NODE_TYPES = [
   "external",
 ];
 
+const COMPLIANCE_TAGS: ComplianceTag[] = ["PII", "PCI", "HIPAA", "SOC2", "GDPR"];
+
 const SAVED_ARCHITECTURE_KEY = "systemlens:saved-architecture";
 
 type SavedArchitecture = {
@@ -33,36 +37,57 @@ const starterNodes: ArchitectureNode[] = [
     id: "user-database",
     label: "User Database",
     type: "database",
+    containsPii: true,
+    dataSensitivity: "restricted",
+    complianceTags: ["PII", "SOC2"],
   },
   {
     id: "auth-service",
     label: "Auth Service",
     type: "service",
+    containsPii: false,
+    dataSensitivity: "confidential",
+    complianceTags: ["SOC2"],
   },
   {
     id: "api-gateway",
     label: "API Gateway",
     type: "service",
+    containsPii: false,
+    dataSensitivity: "internal",
+    complianceTags: ["SOC2"],
   },
   {
     id: "web-app",
     label: "Web App",
     type: "frontend",
+    containsPii: false,
+    dataSensitivity: "internal",
+    complianceTags: [],
   },
   {
     id: "payment-provider",
     label: "Payment Provider",
     type: "external",
+    containsPii: false,
+    dataSensitivity: "confidential",
+    complianceTags: ["PCI"],
   },
   {
     id: "checkout-service",
     label: "Checkout Service",
     type: "service",
+    containsPii: false,
+    dataSensitivity: "confidential",
+    complianceTags: ["PCI", "SOC2"],
   },
   {
     id: "order-database",
     label: "Order Database",
     type: "database",
+    containsPii: false,
+    dataSensitivity: "confidential",
+    complianceTags: ["SOC2"],
   },
 ];
 
@@ -142,6 +167,15 @@ function getDeepestPath(paths: string[][]): string {
   return deepestPath.join(" → ");
 }
 
+function normalizeNode(node: ArchitectureNode): ArchitectureNode {
+  return {
+    ...node,
+    containsPii: node.containsPii ?? false,
+    dataSensitivity: node.dataSensitivity ?? "none",
+    complianceTags: node.complianceTags ?? [],
+  };
+}
+
 function isValidSavedArchitecture(value: unknown): value is SavedArchitecture {
   if (!value || typeof value !== "object") {
     return false;
@@ -156,12 +190,36 @@ function isValidSavedArchitecture(value: unknown): value is SavedArchitecture {
   );
 }
 
+function formatComplianceSummary(node: ArchitectureNode): string {
+  const summaryParts: string[] = [];
+
+  if (node.containsPii) {
+    summaryParts.push("PII");
+  }
+
+  if (node.dataSensitivity && node.dataSensitivity !== "none") {
+    summaryParts.push(node.dataSensitivity);
+  }
+
+  if (node.complianceTags.length > 0) {
+    summaryParts.push(...node.complianceTags);
+  }
+
+  return [...new Set(summaryParts)].join(" · ");
+}
+
 export default function CustomArchitectureBuilder() {
-  const [nodes, setNodes] = useState<ArchitectureNode[]>(starterNodes);
+  const [nodes, setNodes] = useState<ArchitectureNode[]>(
+    starterNodes.map(normalizeNode)
+  );
   const [edges, setEdges] = useState<ArchitectureEdge[]>(starterEdges);
 
   const [nodeLabel, setNodeLabel] = useState("");
   const [nodeType, setNodeType] = useState("service");
+  const [containsPii, setContainsPii] = useState(false);
+  const [dataSensitivity, setDataSensitivity] =
+    useState<DataSensitivity>("none");
+  const [complianceTags, setComplianceTags] = useState<ComplianceTag[]>([]);
 
   const [sourceNode, setSourceNode] = useState(starterNodes[0].label);
   const [targetNode, setTargetNode] = useState(starterNodes[1].label);
@@ -204,15 +262,25 @@ export default function CustomArchitectureBuilder() {
     setError("");
   }
 
+  function resetNodeForm() {
+    setNodeLabel("");
+    setNodeType("service");
+    setContainsPii(false);
+    setDataSensitivity("none");
+    setComplianceTags([]);
+  }
+
   function setGraphState(
     updatedNodes: ArchitectureNode[],
     updatedEdges: ArchitectureEdge[]
   ) {
-    setNodes(updatedNodes);
+    const normalizedNodes = updatedNodes.map(normalizeNode);
+
+    setNodes(normalizedNodes);
     setEdges(updatedEdges);
 
-    const firstNode = updatedNodes[0]?.label ?? "";
-    const secondNode = updatedNodes[1]?.label ?? firstNode;
+    const firstNode = normalizedNodes[0]?.label ?? "";
+    const secondNode = normalizedNodes[1]?.label ?? firstNode;
 
     setSourceNode(firstNode);
     setTargetNode(secondNode);
@@ -233,7 +301,10 @@ export default function CustomArchitectureBuilder() {
         return null;
       }
 
-      return parsedArchitecture;
+      return {
+        ...parsedArchitecture,
+        nodes: parsedArchitecture.nodes.map(normalizeNode),
+      };
     } catch {
       return null;
     }
@@ -247,7 +318,7 @@ export default function CustomArchitectureBuilder() {
     }
 
     const savedArchitecture: SavedArchitecture = {
-      nodes,
+      nodes: nodes.map(normalizeNode),
       edges,
       savedAt: new Date().toISOString(),
     };
@@ -272,8 +343,7 @@ export default function CustomArchitectureBuilder() {
     }
 
     setGraphState(savedArchitecture.nodes, savedArchitecture.edges);
-    setNodeLabel("");
-    setNodeType("service");
+    resetNodeForm();
     setSimulationType("outage");
     setSavedAt(savedArchitecture.savedAt);
     resetResultState();
@@ -285,6 +355,17 @@ export default function CustomArchitectureBuilder() {
     setSavedAt(null);
     setError("");
     setStatusMessage("Cleared saved architecture.");
+  }
+
+  function toggleComplianceTag(tag: ComplianceTag) {
+    if (complianceTags.includes(tag)) {
+      setComplianceTags(
+        complianceTags.filter((existingTag) => existingTag !== tag)
+      );
+      return;
+    }
+
+    setComplianceTags([...complianceTags, tag]);
   }
 
   function addNode() {
@@ -313,12 +394,15 @@ export default function CustomArchitectureBuilder() {
       id,
       label: trimmedLabel,
       type: nodeType,
+      containsPii,
+      dataSensitivity,
+      complianceTags,
     };
 
     const updatedNodes = [...nodes, newNode];
 
     setNodes(updatedNodes);
-    setNodeLabel("");
+    resetNodeForm();
     setSelectedSourceNode(trimmedLabel);
 
     if (updatedNodes.length === 1) {
@@ -445,8 +529,7 @@ export default function CustomArchitectureBuilder() {
 
   function loadStarterGraph() {
     setGraphState(starterNodes, starterEdges);
-    setNodeLabel("");
-    setNodeType("service");
+    resetNodeForm();
     setSimulationType("outage");
     resetResultState();
     setStatusMessage("Loaded starter architecture.");
@@ -455,8 +538,7 @@ export default function CustomArchitectureBuilder() {
   function clearGraph() {
     setNodes([]);
     setEdges([]);
-    setNodeLabel("");
-    setNodeType("service");
+    resetNodeForm();
     setSourceNode("");
     setTargetNode("");
     setSelectedSourceNode("");
@@ -531,6 +613,51 @@ export default function CustomArchitectureBuilder() {
               ))}
             </select>
           </label>
+
+          <div className="compliance-section">
+            <p className="helper-text">Security & compliance</p>
+
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={containsPii}
+                onChange={(event) => setContainsPii(event.target.checked)}
+              />
+              <span>Contains PII</span>
+            </label>
+
+            <label>
+              Data sensitivity
+              <select
+                value={dataSensitivity}
+                onChange={(event) =>
+                  setDataSensitivity(event.target.value as DataSensitivity)
+                }
+              >
+                <option value="none">none</option>
+                <option value="internal">internal</option>
+                <option value="confidential">confidential</option>
+                <option value="restricted">restricted</option>
+              </select>
+            </label>
+
+            <div>
+              <p className="helper-text">Compliance tags</p>
+
+              <div className="tag-checkbox-grid">
+                {COMPLIANCE_TAGS.map((tag) => (
+                  <label key={tag} className="checkbox-row tag-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={complianceTags.includes(tag)}
+                      onChange={() => toggleComplianceTag(tag)}
+                    />
+                    <span>{tag}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
 
           <button type="button" onClick={addNode}>
             Add Node
@@ -656,7 +783,11 @@ export default function CustomArchitectureBuilder() {
           <div className="blast-radius-grid">
             <div>
               <span>Source</span>
-              <strong>{analysis.simulation.failedNode}</strong>
+              <strong>
+                {analysis.simulation.failedNode ??
+                  analysis.simulation.changedNode ??
+                  selectedSourceNode}
+              </strong>
             </div>
 
             <div>
@@ -683,17 +814,27 @@ export default function CustomArchitectureBuilder() {
             <p className="empty-state">No nodes yet.</p>
           ) : (
             <div className="node-list">
-              {nodes.map((node) => (
-                <div key={node.id} className="node-pill">
-                  <div>
-                    <strong>{node.label}</strong>
-                    <span>{node.type}</span>
+              {nodes.map((node) => {
+                const complianceSummary = formatComplianceSummary(node);
+
+                return (
+                  <div key={node.id} className="node-pill">
+                    <div>
+                      <strong>{node.label}</strong>
+                      <span>{node.type}</span>
+
+                      {complianceSummary && (
+                        <small className="node-compliance-summary">
+                          {complianceSummary}
+                        </small>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => removeNode(node.label)}>
+                      Remove
+                    </button>
                   </div>
-                  <button type="button" onClick={() => removeNode(node.label)}>
-                    Remove
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
