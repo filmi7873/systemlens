@@ -34,6 +34,7 @@ The goal is to help developers answer questions like:
 ## Features
 
 - Build custom architecture dependency graphs
+- Save and load custom architectures
 - Add systems such as services, databases, frontends, queues, workers, and external providers
 - Define directional dependencies between systems
 - Run outage simulations
@@ -286,7 +287,6 @@ SystemLens currently supports:
 
 Possible future improvements include:
 
-- Save and load custom architectures
 - Export simulation reports
 - Compare two simulation scenarios
 - Add more starter architecture templates
