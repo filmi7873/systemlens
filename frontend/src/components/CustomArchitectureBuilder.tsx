@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   runCustomOutageAnalysis,
   runCustomSchemaChangeAnalysis,
@@ -19,6 +19,14 @@ const NODE_TYPES = [
   "worker",
   "external",
 ];
+
+const SAVED_ARCHITECTURE_KEY = "systemlens:saved-architecture";
+
+type SavedArchitecture = {
+  nodes: ArchitectureNode[];
+  edges: ArchitectureEdge[];
+  savedAt: string;
+};
 
 const starterNodes: ArchitectureNode[] = [
   {
@@ -113,6 +121,41 @@ function formatList(items: string[]): string {
   return items.join(", ");
 }
 
+function formatSavedAt(savedAt: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(savedAt));
+}
+
+function getDeepestPath(paths: string[][]): string {
+  if (paths.length === 0) {
+    return "No downstream path";
+  }
+
+  const deepestPath = paths.reduce((longest, current) =>
+    current.length > longest.length ? current : longest
+  );
+
+  return deepestPath.join(" → ");
+}
+
+function isValidSavedArchitecture(value: unknown): value is SavedArchitecture {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as SavedArchitecture;
+
+  return (
+    Array.isArray(candidate.nodes) &&
+    Array.isArray(candidate.edges) &&
+    typeof candidate.savedAt === "string"
+  );
+}
+
 export default function CustomArchitectureBuilder() {
   const [nodes, setNodes] = useState<ArchitectureNode[]>(starterNodes);
   const [edges, setEdges] = useState<ArchitectureEdge[]>(starterEdges);
@@ -123,9 +166,10 @@ export default function CustomArchitectureBuilder() {
   const [sourceNode, setSourceNode] = useState(starterNodes[0].label);
   const [targetNode, setTargetNode] = useState(starterNodes[1].label);
 
-  const [simulationType, setSimulationType] = useState<"outage" | "schema-change">(
-    "outage"
-  );
+  const [simulationType, setSimulationType] = useState<
+    "outage" | "schema-change"
+  >("outage");
+
   const [selectedSourceNode, setSelectedSourceNode] = useState(
     starterNodes[0].label
   );
@@ -134,15 +178,113 @@ export default function CustomArchitectureBuilder() {
     null
   );
   const [error, setError] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [savedAt, setSavedAt] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
 
   const nodeLabels = useMemo(() => nodes.map((node) => node.label), [nodes]);
 
   const canRunSimulation = nodes.length > 0 && selectedSourceNode.trim() !== "";
 
+  const totalImpactedSystems = analysis
+    ? analysis.simulation.directlyAffected.length +
+      analysis.simulation.indirectlyAffected.length
+    : 0;
+
+  useEffect(() => {
+    const savedArchitecture = readSavedArchitecture();
+
+    if (savedArchitecture) {
+      setSavedAt(savedArchitecture.savedAt);
+    }
+  }, []);
+
   function resetResultState() {
     setAnalysis(null);
     setError("");
+  }
+
+  function setGraphState(
+    updatedNodes: ArchitectureNode[],
+    updatedEdges: ArchitectureEdge[]
+  ) {
+    setNodes(updatedNodes);
+    setEdges(updatedEdges);
+
+    const firstNode = updatedNodes[0]?.label ?? "";
+    const secondNode = updatedNodes[1]?.label ?? firstNode;
+
+    setSourceNode(firstNode);
+    setTargetNode(secondNode);
+    setSelectedSourceNode(firstNode);
+  }
+
+  function readSavedArchitecture(): SavedArchitecture | null {
+    const rawSavedArchitecture = localStorage.getItem(SAVED_ARCHITECTURE_KEY);
+
+    if (!rawSavedArchitecture) {
+      return null;
+    }
+
+    try {
+      const parsedArchitecture = JSON.parse(rawSavedArchitecture);
+
+      if (!isValidSavedArchitecture(parsedArchitecture)) {
+        return null;
+      }
+
+      return parsedArchitecture;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveArchitecture() {
+    if (nodes.length === 0) {
+      setError("Add at least one node before saving an architecture.");
+      setStatusMessage("");
+      return;
+    }
+
+    const savedArchitecture: SavedArchitecture = {
+      nodes,
+      edges,
+      savedAt: new Date().toISOString(),
+    };
+
+    localStorage.setItem(
+      SAVED_ARCHITECTURE_KEY,
+      JSON.stringify(savedArchitecture)
+    );
+
+    setSavedAt(savedArchitecture.savedAt);
+    setError("");
+    setStatusMessage("Saved architecture locally.");
+  }
+
+  function loadSavedArchitecture() {
+    const savedArchitecture = readSavedArchitecture();
+
+    if (!savedArchitecture) {
+      setError("No saved architecture found.");
+      setStatusMessage("");
+      return;
+    }
+
+    setGraphState(savedArchitecture.nodes, savedArchitecture.edges);
+    setNodeLabel("");
+    setNodeType("service");
+    setSimulationType("outage");
+    setSavedAt(savedArchitecture.savedAt);
+    resetResultState();
+    setStatusMessage("Loaded saved architecture.");
+  }
+
+  function clearSavedArchitecture() {
+    localStorage.removeItem(SAVED_ARCHITECTURE_KEY);
+    setSavedAt(null);
+    setError("");
+    setStatusMessage("Cleared saved architecture.");
   }
 
   function addNode() {
@@ -150,6 +292,7 @@ export default function CustomArchitectureBuilder() {
 
     if (!trimmedLabel) {
       setError("Node label is required.");
+      setStatusMessage("");
       return;
     }
 
@@ -159,6 +302,7 @@ export default function CustomArchitectureBuilder() {
 
     if (labelExists) {
       setError("A node with that label already exists.");
+      setStatusMessage("");
       return;
     }
 
@@ -183,6 +327,7 @@ export default function CustomArchitectureBuilder() {
     }
 
     resetResultState();
+    setStatusMessage("");
   }
 
   function removeNode(label: string) {
@@ -195,6 +340,7 @@ export default function CustomArchitectureBuilder() {
     setEdges(updatedEdges);
 
     const nextSelected = updatedNodes[0]?.label ?? "";
+
     if (selectedSourceNode === label) {
       setSelectedSourceNode(nextSelected);
     }
@@ -208,16 +354,19 @@ export default function CustomArchitectureBuilder() {
     }
 
     resetResultState();
+    setStatusMessage("");
   }
 
   function addEdge() {
     if (!sourceNode || !targetNode) {
       setError("Choose both a source and target node.");
+      setStatusMessage("");
       return;
     }
 
     if (sourceNode === targetNode) {
       setError("A dependency cannot connect a node to itself.");
+      setStatusMessage("");
       return;
     }
 
@@ -227,6 +376,7 @@ export default function CustomArchitectureBuilder() {
 
     if (edgeExists) {
       setError("That dependency already exists.");
+      setStatusMessage("");
       return;
     }
 
@@ -239,21 +389,31 @@ export default function CustomArchitectureBuilder() {
 
     setEdges([...edges, newEdge]);
     resetResultState();
+    setStatusMessage("");
   }
 
   function removeEdge(edgeId: string) {
     setEdges(edges.filter((edge) => edge.id !== edgeId));
     resetResultState();
+    setStatusMessage("");
   }
 
   async function runSimulation() {
     if (!canRunSimulation) {
       setError("Choose a source node before running a simulation.");
+      setStatusMessage("");
+      return;
+    }
+
+    if (edges.length === 0) {
+      setError("Add at least one dependency before running a simulation.");
+      setStatusMessage("");
       return;
     }
 
     setIsRunning(true);
     setError("");
+    setStatusMessage("");
     setAnalysis(null);
 
     try {
@@ -284,15 +444,12 @@ export default function CustomArchitectureBuilder() {
   }
 
   function loadStarterGraph() {
-    setNodes(starterNodes);
-    setEdges(starterEdges);
+    setGraphState(starterNodes, starterEdges);
     setNodeLabel("");
     setNodeType("service");
-    setSourceNode(starterNodes[0].label);
-    setTargetNode(starterNodes[1].label);
-    setSelectedSourceNode(starterNodes[0].label);
     setSimulationType("outage");
     resetResultState();
+    setStatusMessage("Loaded starter architecture.");
   }
 
   function clearGraph() {
@@ -304,6 +461,7 @@ export default function CustomArchitectureBuilder() {
     setTargetNode("");
     setSelectedSourceNode("");
     resetResultState();
+    setStatusMessage("Cleared current architecture.");
   }
 
   return (
@@ -316,12 +474,31 @@ export default function CustomArchitectureBuilder() {
             Add systems, connect dependencies, then run the same backend graph
             traversal engine against your custom architecture.
           </p>
+
+          {savedAt && (
+            <p className="saved-architecture-text">
+              Saved locally: {formatSavedAt(savedAt)}
+            </p>
+          )}
         </div>
 
         <div className="custom-builder__actions">
           <button type="button" onClick={loadStarterGraph}>
             Load starter graph
           </button>
+
+          <button type="button" onClick={saveArchitecture}>
+            Save graph
+          </button>
+
+          <button type="button" onClick={loadSavedArchitecture}>
+            Load saved graph
+          </button>
+
+          <button type="button" onClick={clearSavedArchitecture}>
+            Clear saved graph
+          </button>
+
           <button type="button" className="danger-button" onClick={clearGraph}>
             Clear
           </button>
@@ -410,14 +587,21 @@ export default function CustomArchitectureBuilder() {
             <button
               type="button"
               className={simulationType === "outage" ? "active" : ""}
-              onClick={() => setSimulationType("outage")}
+              onClick={() => {
+                setSimulationType("outage");
+                resetResultState();
+              }}
             >
               Outage
             </button>
+
             <button
               type="button"
               className={simulationType === "schema-change" ? "active" : ""}
-              onClick={() => setSimulationType("schema-change")}
+              onClick={() => {
+                setSimulationType("schema-change");
+                resetResultState();
+              }}
             >
               Schema Change
             </button>
@@ -427,7 +611,10 @@ export default function CustomArchitectureBuilder() {
             Source node
             <select
               value={selectedSourceNode}
-              onChange={(event) => setSelectedSourceNode(event.target.value)}
+              onChange={(event) => {
+                setSelectedSourceNode(event.target.value);
+                resetResultState();
+              }}
               disabled={nodes.length === 0}
             >
               {nodeLabels.map((label) => (
@@ -451,13 +638,44 @@ export default function CustomArchitectureBuilder() {
 
       {error && <div className="builder-error">{error}</div>}
 
-<CustomArchitectureGraph
-  nodes={nodes}
-  edges={edges}
-  simulation={analysis?.simulation ?? null}
-/>
+      {statusMessage && <div className="builder-status">{statusMessage}</div>}
 
-<div className="custom-builder__workspace">
+      <CustomArchitectureGraph
+        nodes={nodes}
+        edges={edges}
+        simulation={analysis?.simulation ?? null}
+      />
+
+      {analysis && (
+        <div className="blast-radius-card">
+          <div>
+            <p className="custom-builder__eyebrow">Blast Radius Summary</p>
+            <h3>{totalImpactedSystems} downstream system(s) impacted</h3>
+          </div>
+
+          <div className="blast-radius-grid">
+            <div>
+              <span>Source</span>
+              <strong>{analysis.simulation.failedNode}</strong>
+            </div>
+
+            <div>
+              <span>Deepest path</span>
+              <strong>{getDeepestPath(analysis.simulation.impactPaths)}</strong>
+            </div>
+
+            <div>
+              <span>Risk</span>
+              <strong>
+                {analysis.riskAssessment.riskLevel} ·{" "}
+                {analysis.riskAssessment.riskScore}/100
+              </strong>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="custom-builder__workspace">
         <div className="builder-card">
           <h3>Nodes</h3>
 
@@ -547,7 +765,9 @@ export default function CustomArchitectureBuilder() {
             ) : (
               <ul>
                 {analysis.simulation.impactPaths.map((path, index) => (
-                  <li key={`${path.join("-")}-${index}`}>{path.join(" → ")}</li>
+                  <li key={`${path.join("-")}-${index}`}>
+                    {path.join(" → ")}
+                  </li>
                 ))}
               </ul>
             )}
