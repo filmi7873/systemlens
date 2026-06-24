@@ -520,4 +520,18 @@
   .blast-radius-grid {
     grid-template-columns: 1fr;
   }
+  .saved-architecture-text {
+  margin-top: 0.75rem;
+  color: #bfdbfe;
+  font-size: 0.9rem;
+}
+
+.builder-status {
+  margin: 1rem 0;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  color: #bbf7d0;
+  background: rgba(22, 101, 52, 0.24);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
 }
