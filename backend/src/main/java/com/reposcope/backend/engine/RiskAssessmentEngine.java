@@ -35,16 +35,30 @@ public class RiskAssessmentEngine {
                 .max(Comparator.naturalOrder())
                 .orElse(1);
 
+        boolean isSchemaChange = simulationType.equalsIgnoreCase("schema-change");
+
         if (sourceType.equalsIgnoreCase("database")) {
             riskScore += 20;
-            riskFactors.add("The change originates from a database, which can affect downstream services that depend on its schema.");
-            recommendations.add("Prepare or verify a rollback plan before applying database changes.");
+
+            if (isSchemaChange) {
+                riskFactors.add("The change originates from a database, which can affect downstream services that depend on its schema.");
+                recommendations.add("Prepare or verify a rollback plan before applying database changes.");
+            } else {
+                riskFactors.add("The outage originates from a database, which can affect downstream services that depend on its availability.");
+                recommendations.add("Verify database recovery steps and confirm downstream services reconnect cleanly.");
+            }
         }
 
         if (sourceType.equalsIgnoreCase("external")) {
             riskScore += 15;
-            riskFactors.add("The impact starts from an external provider, which may be harder to control or rollback.");
-            recommendations.add("Verify provider fallback behavior and error handling.");
+
+            if (isSchemaChange) {
+                riskFactors.add("The change starts from an external provider, which may be harder to control or rollback.");
+                recommendations.add("Verify provider contract changes, fallback behavior, and error handling.");
+            } else {
+                riskFactors.add("The outage starts from an external provider, which may be harder to control or recover quickly.");
+                recommendations.add("Verify provider fallback behavior, timeout handling, and customer-facing error states.");
+            }
         }
 
         if (impactedCount >= 3) {
@@ -78,7 +92,7 @@ public class RiskAssessmentEngine {
             recommendations.add("Smoke test the checkout/payment flow before release.");
         }
 
-        if (simulationType.equalsIgnoreCase("schema-change")) {
+        if (isSchemaChange) {
             riskScore += 8;
             riskFactors.add("Schema or contract changes may require consumer validation even if services remain online.");
             recommendations.add("Run integration tests for direct consumers of the changed contract.");
@@ -86,7 +100,7 @@ public class RiskAssessmentEngine {
 
         if (riskFactors.isEmpty()) {
             riskFactors.add("No major downstream risk factors were detected in the current architecture graph.");
-            recommendations.add("Run standard regression checks for the changed component.");
+            recommendations.add("Run standard regression checks for the source component.");
         }
 
         int cappedScore = Math.min(riskScore, 100);
