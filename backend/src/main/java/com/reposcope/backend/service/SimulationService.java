@@ -57,11 +57,14 @@ public class SimulationService {
         ArchitectureGraph graph = buildCustomGraph(
                 request.getNodes()
                         .stream()
-                        .map(node -> new SystemNode(
-                                node.getId(),
-                                node.getLabel(),
-                                node.getType()
-                        ))
+                        .map(node ->new SystemNode(
+        node.getId(),
+        node.getLabel(),
+        node.getType(),
+        node.isContainsPii(),
+        node.getDataSensitivity(),
+        node.getComplianceTags()
+))
                         .toList(),
                 request.getEdges()
                         .stream()
@@ -84,10 +87,13 @@ public class SimulationService {
                 request.getNodes()
                         .stream()
                         .map(node -> new SystemNode(
-                                node.getId(),
-                                node.getLabel(),
-                                node.getType()
-                        ))
+        node.getId(),
+        node.getLabel(),
+        node.getType(),
+        node.isContainsPii(),
+        node.getDataSensitivity(),
+        node.getComplianceTags()
+))
                         .toList(),
                 request.getEdges()
                         .stream()
@@ -144,10 +150,13 @@ public class SimulationService {
                 request.getNodes()
                         .stream()
                         .map(node -> new SystemNode(
-                                node.getId(),
-                                node.getLabel(),
-                                node.getType()
-                        ))
+        node.getId(),
+        node.getLabel(),
+        node.getType(),
+        node.isContainsPii(),
+        node.getDataSensitivity(),
+        node.getComplianceTags()
+))
                         .toList(),
                 request.getEdges()
                         .stream()
@@ -181,10 +190,13 @@ public class SimulationService {
                 request.getNodes()
                         .stream()
                         .map(node -> new SystemNode(
-                                node.getId(),
-                                node.getLabel(),
-                                node.getType()
-                        ))
+        node.getId(),
+        node.getLabel(),
+        node.getType(),
+        node.isContainsPii(),
+        node.getDataSensitivity(),
+        node.getComplianceTags()
+))
                         .toList(),
                 request.getEdges()
                         .stream()
@@ -219,12 +231,12 @@ public class SimulationService {
     public ArchitectureGraphResponse getSampleArchitectureGraph() {
         ArchitectureGraph graph = sampleArchitectureFactory.createEcommerceArchitecture();
 
-        List<ArchitectureGraphResponse.ArchitectureNode> nodes = graph.getNodes()
+        List<ArchitectureGraphResponse.ArchitectureNodeResponse> nodes = graph.getNodes()
                 .stream()
                 .map(this::toArchitectureNodeResponse)
                 .toList();
 
-        List<ArchitectureGraphResponse.ArchitectureEdge> edges = graph.getEdges()
+        List<ArchitectureGraphResponse.ArchitectureEdgeResponse> edges = graph.getEdges()
                 .stream()
                 .map(this::toArchitectureEdgeResponse)
                 .toList();
@@ -239,20 +251,23 @@ public class SimulationService {
         return new ArchitectureGraph(nodes, edges);
     }
 
-    private ArchitectureGraphResponse.ArchitectureNode toArchitectureNodeResponse(
-            SystemNode node
-    ) {
-        return new ArchitectureGraphResponse.ArchitectureNode(
-                node.getId(),
-                node.getLabel(),
-                node.getType()
-        );
-    }
+    private ArchitectureGraphResponse.ArchitectureNodeResponse toArchitectureNodeResponse(
+        SystemNode node
+) {
+    return new ArchitectureGraphResponse.ArchitectureNodeResponse(
+            node.getId(),
+            node.getLabel(),
+            node.getType(),
+            node.isContainsPii(),
+            node.getDataSensitivity(),
+            node.getComplianceTags()
+    );
+}
 
-    private ArchitectureGraphResponse.ArchitectureEdge toArchitectureEdgeResponse(
+    private ArchitectureGraphResponse.ArchitectureEdgeResponse toArchitectureEdgeResponse(
             SystemEdge edge
     ) {
-        return new ArchitectureGraphResponse.ArchitectureEdge(
+        return new ArchitectureGraphResponse.ArchitectureEdgeResponse(
                 edge.getId(),
                 normalizeNodeId(edge.getSourceNode()),
                 normalizeNodeId(edge.getTargetNode()),

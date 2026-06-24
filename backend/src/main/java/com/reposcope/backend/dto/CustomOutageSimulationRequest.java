@@ -3,9 +3,28 @@ package com.reposcope.backend.dto;
 import java.util.List;
 
 public class CustomOutageSimulationRequest {
+    private List<ArchitectureNodeDto> nodes;
+    private List<ArchitectureEdgeDto> edges;
     private String failedNode;
-    private List<CustomNodeRequest> nodes;
-    private List<CustomEdgeRequest> edges;
+
+    public CustomOutageSimulationRequest() {
+    }
+
+    public List<ArchitectureNodeDto> getNodes() {
+        return nodes;
+    }
+
+    public void setNodes(List<ArchitectureNodeDto> nodes) {
+        this.nodes = nodes;
+    }
+
+    public List<ArchitectureEdgeDto> getEdges() {
+        return edges;
+    }
+
+    public void setEdges(List<ArchitectureEdgeDto> edges) {
+        this.edges = edges;
+    }
 
     public String getFailedNode() {
         return failedNode;
@@ -15,26 +34,17 @@ public class CustomOutageSimulationRequest {
         this.failedNode = failedNode;
     }
 
-    public List<CustomNodeRequest> getNodes() {
-        return nodes;
-    }
-
-    public void setNodes(List<CustomNodeRequest> nodes) {
-        this.nodes = nodes;
-    }
-
-    public List<CustomEdgeRequest> getEdges() {
-        return edges;
-    }
-
-    public void setEdges(List<CustomEdgeRequest> edges) {
-        this.edges = edges;
-    }
-
-    public static class CustomNodeRequest {
+    public static class ArchitectureNodeDto {
         private String id;
         private String label;
         private String type;
+
+        private boolean containsPii;
+        private String dataSensitivity;
+        private List<String> complianceTags;
+
+        public ArchitectureNodeDto() {
+        }
 
         public String getId() {
             return id;
@@ -59,13 +69,40 @@ public class CustomOutageSimulationRequest {
         public void setType(String type) {
             this.type = type;
         }
+
+        public boolean isContainsPii() {
+            return containsPii;
+        }
+
+        public void setContainsPii(boolean containsPii) {
+            this.containsPii = containsPii;
+        }
+
+        public String getDataSensitivity() {
+            return dataSensitivity == null ? "none" : dataSensitivity;
+        }
+
+        public void setDataSensitivity(String dataSensitivity) {
+            this.dataSensitivity = dataSensitivity == null ? "none" : dataSensitivity;
+        }
+
+        public List<String> getComplianceTags() {
+            return complianceTags == null ? List.of() : complianceTags;
+        }
+
+        public void setComplianceTags(List<String> complianceTags) {
+            this.complianceTags = complianceTags == null ? List.of() : complianceTags;
+        }
     }
 
-    public static class CustomEdgeRequest {
+    public static class ArchitectureEdgeDto {
         private String id;
         private String sourceNode;
         private String targetNode;
         private String relationship;
+
+        public ArchitectureEdgeDto() {
+        }
 
         public String getId() {
             return id;

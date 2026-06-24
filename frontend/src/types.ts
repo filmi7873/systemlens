@@ -1,7 +1,32 @@
+export type ArchitectureNodeType =
+  | "service"
+  | "database"
+  | "frontend"
+  | "queue"
+  | "worker"
+  | "external";
+
+export type DataSensitivity =
+  | "none"
+  | "internal"
+  | "confidential"
+  | "restricted";
+
+export type ComplianceTag =
+  | "PII"
+  | "PCI"
+  | "HIPAA"
+  | "SOC2"
+  | "GDPR";
+
 export type ArchitectureNode = {
   id: string;
   label: string;
-  type: string;
+  type: ArchitectureNodeType | string;
+
+  containsPii: boolean;
+  dataSensitivity: DataSensitivity;
+  complianceTags: ComplianceTag[];
 };
 
 export type ArchitectureEdge = {
@@ -12,7 +37,8 @@ export type ArchitectureEdge = {
 };
 
 export type SimulationResultResponse = {
-  failedNode: string;
+  failedNode?: string;
+  changedNode?: string;
   severity: string;
   directlyAffected: string[];
   indirectlyAffected: string[];

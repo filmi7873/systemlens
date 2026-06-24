@@ -98,6 +98,12 @@ public class RiskAssessmentEngine {
             recommendations.add("Run integration tests for direct consumers of the changed contract.");
         }
 
+        List<SystemNode> affectedSystemNodes = getAffectedSystemNodes(graph, simulation);
+
+        riskScore += calculateComplianceRiskScore(affectedSystemNodes);
+        addComplianceRiskFactors(riskFactors, affectedSystemNodes);
+        addComplianceRecommendations(recommendations, affectedSystemNodes);
+
         if (riskFactors.isEmpty()) {
             riskFactors.add("No major downstream risk factors were detected in the current architecture graph.");
             recommendations.add("Run standard regression checks for the source component.");
@@ -131,10 +137,7 @@ public class RiskAssessmentEngine {
             SimulationResultResponse simulation,
             String nodeType
     ) {
-        List<String> affectedNodes = new ArrayList<>();
-        affectedNodes.add(simulation.getFailedNode());
-        affectedNodes.addAll(simulation.getDirectlyAffected());
-        affectedNodes.addAll(simulation.getIndirectlyAffected());
+        List<String> affectedNodes = getAffectedNodeLabels(simulation);
 
         return graph.getNodes()
                 .stream()
@@ -143,10 +146,7 @@ public class RiskAssessmentEngine {
     }
 
     private boolean touchesImportantBusinessFlow(SimulationResultResponse simulation) {
-        List<String> affectedNodes = new ArrayList<>();
-        affectedNodes.add(simulation.getFailedNode());
-        affectedNodes.addAll(simulation.getDirectlyAffected());
-        affectedNodes.addAll(simulation.getIndirectlyAffected());
+        List<String> affectedNodes = getAffectedNodeLabels(simulation);
 
         return affectedNodes.stream()
                 .map(String::toLowerCase)
@@ -156,6 +156,161 @@ public class RiskAssessmentEngine {
                                 || node.contains("order")
                                 || node.contains("cart")
                 );
+    }
+
+    private int calculateComplianceRiskScore(List<SystemNode> affectedSystemNodes) {
+        int score = 0;
+
+        for (SystemNode node : affectedSystemNodes) {
+            if (node.isContainsPii()) {
+                score += 15;
+            }
+
+            String sensitivity = node.getDataSensitivity();
+
+            if (sensitivity.equalsIgnoreCase("internal")) {
+                score += 5;
+            } else if (sensitivity.equalsIgnoreCase("confidential")) {
+                score += 10;
+            } else if (sensitivity.equalsIgnoreCase("restricted")) {
+                score += 20;
+            }
+
+            if (hasComplianceTag(node, "PII")) {
+                score += 10;
+            }
+
+            if (hasComplianceTag(node, "PCI")) {
+                score += 15;
+            }
+
+            if (hasComplianceTag(node, "HIPAA")) {
+                score += 15;
+            }
+
+            if (hasComplianceTag(node, "SOC2")) {
+                score += 10;
+            }
+
+            if (hasComplianceTag(node, "GDPR")) {
+                score += 10;
+            }
+        }
+
+        return score;
+    }
+
+    private void addComplianceRiskFactors(
+            List<String> riskFactors,
+            List<SystemNode> affectedSystemNodes
+    ) {
+        boolean affectsPii = affectedSystemNodes.stream()
+                .anyMatch(SystemNode::isContainsPii);
+
+        boolean affectsRestrictedData = affectedSystemNodes.stream()
+                .anyMatch(node -> node.getDataSensitivity().equalsIgnoreCase("restricted"));
+
+        boolean affectsConfidentialData = affectedSystemNodes.stream()
+                .anyMatch(node -> node.getDataSensitivity().equalsIgnoreCase("confidential"));
+
+        boolean affectsComplianceScopedSystem = affectedSystemNodes.stream()
+                .anyMatch(node -> !node.getComplianceTags().isEmpty());
+
+        boolean affectsPaymentCompliance = affectedSystemNodes.stream()
+                .anyMatch(node -> hasComplianceTag(node, "PCI"));
+
+        boolean affectsHealthCompliance = affectedSystemNodes.stream()
+                .anyMatch(node -> hasComplianceTag(node, "HIPAA"));
+
+        if (affectsPii) {
+            riskFactors.add("The simulation affects systems that handle personally identifiable information.");
+        }
+
+        if (affectsRestrictedData) {
+            riskFactors.add("The simulation affects systems marked as restricted data environments.");
+        } else if (affectsConfidentialData) {
+            riskFactors.add("The simulation affects systems marked as confidential data environments.");
+        }
+
+        if (affectsComplianceScopedSystem) {
+            riskFactors.add("The simulation affects systems with compliance-related tags.");
+        }
+
+        if (affectsPaymentCompliance) {
+            riskFactors.add("The affected path includes PCI-scoped payment or cardholder-data systems.");
+        }
+
+        if (affectsHealthCompliance) {
+            riskFactors.add("The affected path includes HIPAA-scoped health-data systems.");
+        }
+    }
+
+    private void addComplianceRecommendations(
+            List<String> recommendations,
+            List<SystemNode> affectedSystemNodes
+    ) {
+        boolean affectsPii = affectedSystemNodes.stream()
+                .anyMatch(SystemNode::isContainsPii);
+
+        boolean affectsRestrictedData = affectedSystemNodes.stream()
+                .anyMatch(node -> node.getDataSensitivity().equalsIgnoreCase("restricted"));
+
+        boolean affectsComplianceScopedSystem = affectedSystemNodes.stream()
+                .anyMatch(node -> !node.getComplianceTags().isEmpty());
+
+        boolean affectsPaymentCompliance = affectedSystemNodes.stream()
+                .anyMatch(node -> hasComplianceTag(node, "PCI"));
+
+        boolean affectsHealthCompliance = affectedSystemNodes.stream()
+                .anyMatch(node -> hasComplianceTag(node, "HIPAA"));
+
+        if (affectsPii) {
+            recommendations.add("Verify that affected PII-handling systems preserve access controls, audit logs, and data protection requirements.");
+        }
+
+        if (affectsRestrictedData) {
+            recommendations.add("Review recovery and validation steps for restricted data systems before restoring full traffic.");
+        }
+
+        if (affectsComplianceScopedSystem) {
+            recommendations.add("Confirm compliance-sensitive workflows are included in post-change validation and incident review.");
+        }
+
+        if (affectsPaymentCompliance) {
+            recommendations.add("Validate payment-related controls, logging, and error handling before releasing or recovering PCI-scoped systems.");
+        }
+
+        if (affectsHealthCompliance) {
+            recommendations.add("Review health-data handling, access controls, and audit requirements before restoring HIPAA-scoped workflows.");
+        }
+    }
+
+    private List<SystemNode> getAffectedSystemNodes(
+            ArchitectureGraph graph,
+            SimulationResultResponse simulation
+    ) {
+        List<String> affectedNodeLabels = getAffectedNodeLabels(simulation);
+
+        return graph.getNodes()
+                .stream()
+                .filter(node -> affectedNodeLabels.contains(node.getLabel()))
+                .toList();
+    }
+
+    private List<String> getAffectedNodeLabels(SimulationResultResponse simulation) {
+        List<String> affectedNodes = new ArrayList<>();
+
+        affectedNodes.add(simulation.getFailedNode());
+        affectedNodes.addAll(simulation.getDirectlyAffected());
+        affectedNodes.addAll(simulation.getIndirectlyAffected());
+
+        return affectedNodes;
+    }
+
+    private boolean hasComplianceTag(SystemNode node, String tag) {
+        return node.getComplianceTags()
+                .stream()
+                .anyMatch(existingTag -> existingTag.equalsIgnoreCase(tag));
     }
 
     private String getNodeType(ArchitectureGraph graph, String nodeLabel) {
