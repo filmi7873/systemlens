@@ -9,6 +9,7 @@ import type {
   SimulationAnalysisResponse,
 } from "../types";
 import "./CustomArchitectureBuilder.css";
+import CustomArchitectureGraph from "./CustomArchitectureGraph";
 
 const NODE_TYPES = [
   "frontend",
@@ -406,7 +407,13 @@ export default function CustomArchitectureBuilder() {
 
       {error && <div className="builder-error">{error}</div>}
 
-      <div className="custom-builder__workspace">
+<CustomArchitectureGraph
+  nodes={nodes}
+  edges={edges}
+  simulation={analysis?.simulation ?? null}
+/>
+
+<div className="custom-builder__workspace">
         <div className="builder-card">
           <h3>Nodes</h3>
 
