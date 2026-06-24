@@ -73,20 +73,23 @@ class OutageSimulationEngineTest {
     }
 
     @Test
-    void simulate_whenEmailQueueFails_impactsNotificationWorkerOnly() {
-        SimulationResultResponse result = outageSimulationEngine.simulate(graph, "Email Queue");
+void simulate_whenEmailQueueFails_impactsNotificationWorkerAndWebApp() {
+    SimulationResultResponse result = outageSimulationEngine.simulate(graph, "Email Queue");
 
-        assertEquals("Email Queue", result.getFailedNode());
-        assertEquals("low", result.getSeverity());
+    assertEquals("Email Queue", result.getFailedNode());
+    assertEquals("medium", result.getSeverity());
 
-        assertTrue(result.getDirectlyAffected().contains("Notification Worker"));
-        assertTrue(result.getIndirectlyAffected().isEmpty());
+    assertEquals(List.of("Notification Worker"), result.getDirectlyAffected());
+    assertEquals(List.of("Web App"), result.getIndirectlyAffected());
 
-        assertTrue(result.getImpactPaths().contains(
-                List.of("Email Queue", "Notification Worker")
-        ));
-    }
+    assertTrue(result.getImpactPaths().contains(
+            List.of("Email Queue", "Notification Worker")
+    ));
 
+    assertTrue(result.getImpactPaths().contains(
+            List.of("Email Queue", "Notification Worker", "Web App")
+    ));
+}
     @Test
     void simulate_whenUnknownNodeProvided_throwsException() {
         IllegalArgumentException exception = assertThrows(
